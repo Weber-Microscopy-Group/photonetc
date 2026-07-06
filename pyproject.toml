@@ -22,14 +22,14 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = ["h5py", "numpy"]
+dependencies = ["h5py", "numpy", "plotly", "imageio"]
 
 optional-dependencies = { "test" = ["pytest"] }
 
 [project.urls]
-Documentation = "https://github.com/Brian Carlsen/photonetc#readme"
-Issues = "https://github.com/Brian Carlsen/photonetc/issues"
-Source = "https://github.com/Brian Carlsen/photonetc"
+Documentation = "https://github.com/Weber-Microscopy-Group/photonetc#readme"
+Issues = "https://github.com/Weber-Microscopy-Group/photonetc/issues"
+Source = "https://github.com/Weber-Microscopy-Group/photonetc"
 
 [tool.hatch.version]
 path = "src/photonetc/__about__.py"

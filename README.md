@@ -1,6 +1,6 @@
 # photonetc
 
-Tools to handle photonetc hypercube data.
+Tools to handle, analyze, and visualize photonetc hypercube data.
 
 ## Installation
 
