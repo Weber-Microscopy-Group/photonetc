@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026-present Brian Carlsen <carlsen.bri@gmail.com>
 #
 # SPDX-License-Identifier: MIT
-from . import hypercube, plot
-from .hypercube import Hypercube
+from . import datacube, plot
+from .datacube import Hypercube, Video

@@ -7,9 +7,10 @@ import tempfile
 import numpy as np
 import plotly.graph_objects as go
 import imageio.v3 as imageio
+from . import Hypercube, Video
 
 if TYPE_CHECKING:
-    from . import Hypercube
+    from .datacube import Datacube
 
 
 def animate_frames(
@@ -100,7 +101,7 @@ def animate_frames(
 
 
 def plot_data_frames(
-    cube: Hypercube,
+    cube: Datacube,
     colorscale: str = "Viridis",
     constant_cbar: bool | tuple[float, float] = True,
 ) -> list[go.Heatmap]:
@@ -145,7 +146,7 @@ FRAME_ANNOTATION = Literal["wavelength", "timestamp"]
 
 
 def animate(
-    cube: Hypercube,
+    cube: Datacube,
     speed: float = 1,
     scale: float = 1,
     colorscale: str = "Viridis",
@@ -179,9 +180,12 @@ def animate(
     frame_cnt = data.shape[0]
     annotations_text = None
     if annotations == "wavelength":
+        if not isinstance(cube, Hypercube):
+            raise TypeError("Datacube does not have wavelength")
+
         annotations_text = ["{:.0f} nm".format(l) for l in cube.wavelengths]
     elif annotations == "timestamp":
-        annotations_text = ["{:.2f} nm".format(l) for l in cube.timestamps]
+        annotations_text = ["{:.2f} nm".format(l) for l in cube.elapsed]
 
     annotations_frame = [None for _ in range(frame_cnt)]
     if annotations_text is not None:
@@ -267,7 +271,7 @@ def figs_to_gif(
 
 
 def to_gif(
-    cube: Hypercube,
+    cube: Datacube,
     out: os.PathLike,
     speed: float = 1,
     scale: float = 1,
@@ -298,9 +302,12 @@ def to_gif(
     frame_cnt = data.shape[0]
     annotations_text = None
     if annotations == "wavelength":
+        if not isinstance(cube, Hypercube):
+            raise TypeError("Datacube does not have wavelength")
+
         annotations_text = ["{:.0f} nm".format(l) for l in cube.wavelengths]
     elif annotations == "timestamp":
-        annotations_text = ["{:.2f} nm".format(l) for l in cube.timestamps]
+        annotations_text = ["{:.2f} nm".format(l) for l in cube.elapsed]
 
     annotations_frame = [None for _ in range(frame_cnt)]
     if annotations_text is not None:

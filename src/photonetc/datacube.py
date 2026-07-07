@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
+import datetime as dt
 import itertools
 import numpy as np
 import h5py
@@ -179,7 +180,9 @@ class Info:
         return self._optics
 
 
-class Hypercube:
+class Datacube:
+    """Generic data cube."""
+
     def __init__(self, path: os.PathLike):
         file = h5py.File(path)
         root = file["Cube"]
@@ -216,16 +219,15 @@ class Hypercube:
 
     @property
     def data(self) -> h5py.Dataset:
+        """Hypercube data. (`file["Cube"]["Images"]`)
+
+        Raises:
+            ValueError: Invalid data.
+
+        Returns:
+            h5py.Dataset: Hypercube data.
+        """
         KEY = "Images"
-        data = self.root[KEY]
-        if not isinstance(data, h5py.Dataset):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
-
-        return data
-
-    @property
-    def wavelengths(self) -> h5py.Dataset:
-        KEY = "Wavelength"
         data = self.root[KEY]
         if not isinstance(data, h5py.Dataset):
             raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
@@ -250,10 +252,10 @@ class Hypercube:
         return data
 
     @property
-    def timestamps(self) -> np.ndarray:
+    def elapsed(self) -> np.ndarray:
         """
         Returns:
-            np.ndarray: Timestamps of each frame.
+            np.ndarray: Elapsed time of each frame.
         """
         data = self.exposure_times[()]
         return np.array(itertools.accumulate(data))
@@ -324,5 +326,69 @@ class Hypercube:
         """
         self.root
         self.data
-        self.wavelengths
         self.exposure_times
+
+
+class Hypercube(Datacube):
+    """Sprectrally resolved data."""
+
+    def __init__(self, path: os.PathLike):
+        super().__init__(path)
+        self._validate()
+
+    @property
+    def wavelengths(self) -> h5py.Dataset:
+        """Wavelength of each frame. (`file["Cube"]["Wavelength"]`)
+
+        Raises:
+            ValueError: Invalid data.
+
+        Returns:
+            h5py.Dataset: Frame wavelengths.
+        """
+        KEY = "Wavelength"
+        data = self.root[KEY]
+        if not isinstance(data, h5py.Dataset):
+            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+
+        return data
+
+    def _validate(self) -> None:
+        """Validate dataset has correct shape.
+
+        Raises:
+            ValueError: Data is invalid.
+        """
+        self.wavelengths
+
+
+class Video(Datacube):
+    """Temporally resolved data."""
+
+    def __init__(self, path: os.PathLike):
+        super().__init__(path)
+        self._validate()
+
+    @property
+    def timestamps(self) -> list[dt.datetime]:
+        """Timestamp of each frame. (`file["Cube"]["Timestamp"]`)
+
+        Returns:
+            list[dt.datetime]: Timestamps of each frame.
+        """
+        KEY = "Timestamp"
+        data = self.root[KEY]
+        if not isinstance(data, h5py.Dataset):
+            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+
+        return [
+            dt.datetime.strptime(time.decode(), "%Y/%m/%d %H:%M:%S.%f") for time in data
+        ]
+
+    def _validate(self) -> None:
+        """Validate dataset has correct shape.
+
+        Raises:
+            ValueError: Data is invalid.
+        """
+        self.timestamps
