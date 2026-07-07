@@ -170,7 +170,7 @@ def animate(
         go.Figure: Animation.
     """
     plots = plot_data_frames(
-        cube.data_all,
+        cube.data_array,
         colorscale=colorscale,
         constant_cbar=constant_cbar,
     )
@@ -296,7 +296,7 @@ def to_gif(
         progress (bool, optional): Print progress. Defaults to False.
     """
     plots = plot_data_frames(
-        cube.data_all, colorscale=colorscale, constant_cbar=constant_cbar
+        cube.data_array, colorscale=colorscale, constant_cbar=constant_cbar
     )
 
     data = cube.data

@@ -235,7 +235,7 @@ class Datacube:
         return data
 
     @property
-    def data_all(self) -> np.ndarray:
+    def data_array(self) -> np.ndarray:
         """Data as a numpy array.
 
         Returns:
