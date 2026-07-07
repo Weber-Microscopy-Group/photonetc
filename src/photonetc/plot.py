@@ -7,7 +7,7 @@ import tempfile
 import numpy as np
 import plotly.graph_objects as go
 import imageio.v3 as imageio
-from . import Hypercube, Video
+from . import Hypercube
 
 if TYPE_CHECKING:
     from .datacube import Datacube
@@ -101,14 +101,14 @@ def animate_frames(
 
 
 def plot_data_frames(
-    cube: Datacube,
+    data: np.ndarray,
     colorscale: str = "Viridis",
     constant_cbar: bool | tuple[float, float] = True,
 ) -> list[go.Heatmap]:
-    """Create plots for each frame of a `Hypercube`.
+    """Create plots for each frame of a dataset.
 
     Args:
-        cube (Hypercube): Data to plot.
+        data (np.ndarray): Data to plot, indexed by `(frame, x, y)`.
         colorscale (str, optional): Color scale. Defaults to "Viridis".
         constant_cbar (bool | tuple[float, float], optional): Set colorbar scaling across all frames.
             If `True`, the color bar is held contstant across all frames using `p05` an `p95`.
@@ -119,7 +119,6 @@ def plot_data_frames(
     Returns:
         list[go.Heatmap]: Heatmap of each frame.
     """
-    data = cube.data
     zmin = None
     zmax = None
     if constant_cbar is True:
@@ -171,7 +170,7 @@ def animate(
         go.Figure: Animation.
     """
     plots = plot_data_frames(
-        cube,
+        cube.data_all,
         colorscale=colorscale,
         constant_cbar=constant_cbar,
     )
@@ -183,9 +182,11 @@ def animate(
         if not isinstance(cube, Hypercube):
             raise TypeError("Datacube does not have wavelength")
 
-        annotations_text = ["{:.0f} nm".format(l) for l in cube.wavelengths]
+        annotations_text = [
+            "{:.0f} nm".format(wavelength) for wavelength in cube.wavelengths
+        ]
     elif annotations == "timestamp":
-        annotations_text = ["{:.2f} nm".format(l) for l in cube.elapsed]
+        annotations_text = ["{:.2f} nm".format(t) for t in cube.elapsed]
 
     annotations_frame = [None for _ in range(frame_cnt)]
     if annotations_text is not None:
@@ -250,7 +251,6 @@ def figs_to_gif(
 
     imgs = []
     for idx, fig in enumerate(frames):
-
         with tempfile.NamedTemporaryFile(delete_on_close=False) as tmp:
             fig.write_image(tmp.name, format="png")
             tmp.close()
@@ -266,7 +266,6 @@ def figs_to_gif(
     if ext != ".gif":
         out_str = out_str + ".gif"
 
-    fps = 1 / duration
     imageio.imwrite(out_str, imgs, extension=".gif", duration=duration)
 
 
@@ -296,7 +295,9 @@ def to_gif(
         annotations (Optional[FRAME_ANNOTATIONS], optional): Annotations to include.
         progress (bool, optional): Print progress. Defaults to False.
     """
-    plots = plot_data_frames(cube, colorscale=colorscale, constant_cbar=constant_cbar)
+    plots = plot_data_frames(
+        cube.data_all, colorscale=colorscale, constant_cbar=constant_cbar
+    )
 
     data = cube.data
     frame_cnt = data.shape[0]
@@ -305,9 +306,11 @@ def to_gif(
         if not isinstance(cube, Hypercube):
             raise TypeError("Datacube does not have wavelength")
 
-        annotations_text = ["{:.0f} nm".format(l) for l in cube.wavelengths]
+        annotations_text = [
+            "{:.0f} nm".format(wavelength) for wavelength in cube.wavelengths
+        ]
     elif annotations == "timestamp":
-        annotations_text = ["{:.2f} nm".format(l) for l in cube.elapsed]
+        annotations_text = ["{:.2f} nm".format(t) for t in cube.elapsed]
 
     annotations_frame = [None for _ in range(frame_cnt)]
     if annotations_text is not None:

@@ -219,13 +219,13 @@ class Datacube:
 
     @property
     def data(self) -> h5py.Dataset:
-        """Hypercube data. (`file["Cube"]["Images"]`)
+        """Data. (`file["Cube"]["Images"]`)
 
         Raises:
             ValueError: Invalid data.
 
         Returns:
-            h5py.Dataset: Hypercube data.
+            h5py.Dataset: Data.
         """
         KEY = "Images"
         data = self.root[KEY]
@@ -233,6 +233,15 @@ class Datacube:
             raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
 
         return data
+
+    @property
+    def data_all(self) -> np.ndarray:
+        """Data as a numpy array.
+
+        Returns:
+            np.ndarray: Data.
+        """
+        return self.data[()]
 
     @property
     def exposure_times(self) -> h5py.Dataset:

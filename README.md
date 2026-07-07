@@ -1,11 +1,11 @@
 # photonetc
 
-Tools to handle, analyze, and visualize photonetc hypercube data.
+Tools to handle, analyze, and visualize photonetc data cubes.
 
 ## Installation
 
 ```console
-pip install photonetc
+pip install git+https://github.com/Weber-Microscopy-Group/photonetc.git
 ```
 
 ## License
