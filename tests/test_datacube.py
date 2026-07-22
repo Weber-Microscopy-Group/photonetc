@@ -1,9 +1,8 @@
-import pytest
 import photonetc as pe
 import pathlib
 
-DATA_PATH_HYPERCUBE = pathlib.Path(__file__).parent.parent / "data/hypercube.h5"
-DATA_PATH_VIDEO = pathlib.Path(__file__).parent.parent / "data/video.h5"
+DATA_PATH_SPECTRALCUBE = pathlib.Path(__file__).parent.parent / "data/spectralcube.h5"
+DATA_PATH_TEMPORALCUBE = pathlib.Path(__file__).parent.parent / "data/temporalcube.h5"
 
 
 def test_hypercube_properties():
@@ -16,7 +15,7 @@ def test_hypercube_properties():
     X_START = 512
     Y_START = 512
 
-    cube = pe.Hypercube(DATA_PATH_HYPERCUBE)
+    cube = pe.SpectralCube(DATA_PATH_SPECTRALCUBE)
 
     binning = cube.binning
     assert binning[0] == BINS
@@ -63,7 +62,7 @@ def test_video_properties():
     X_START = 512
     Y_START = 512
 
-    cube = pe.Video(DATA_PATH_VIDEO)
+    cube = pe.TemporalCube(DATA_PATH_TEMPORALCUBE)
 
     binning = cube.binning
     assert binning[0] == BINS

@@ -1,4 +1,4 @@
-# # Hypercube
+"""Hypercube data backed by a file."""
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
@@ -158,11 +158,11 @@ class Info:
     def __init__(self, data: h5py.Group) -> None:
         camera = data["Camera"]
         if not isinstance(camera, h5py.Group):
-            raise ValueError(f"Invalid dataset. 'Camera' is not an h5 group.")
+            raise ValueError("Invalid dataset. 'Camera' is not an h5 group.")
 
         optics = data["Optics"]
         if not isinstance(optics, h5py.Group):
-            raise ValueError(f"Invalid dataset. 'Optics' is not an h5 group.")
+            raise ValueError("Invalid dataset. 'Optics' is not an h5 group.")
 
         self._data = data
         self._camera = CameraInfo(camera)
@@ -183,15 +183,15 @@ class Info:
 class Datacube:
     """Generic data cube."""
 
-    def __init__(self, path: os.PathLike):
+    def __init__(self, path: os.PathLike | str | bytes):
         file = h5py.File(path)
         root = file["Cube"]
         if not isinstance(root, h5py.Group):
-            raise ValueError(f"Invalid dataset. 'Cube' is not an h5 group.")
+            raise ValueError("Invalid dataset. 'Cube' is not an h5 group.")
 
         info = root["Info"]
         if not isinstance(info, h5py.Group):
-            raise ValueError(f"Invalid dataset. 'Info' is not an h5 group.")
+            raise ValueError("Invalid dataset. 'Info' is not an h5 group.")
 
         self._file = file
         self._info = Info(info)
@@ -327,24 +327,6 @@ class Datacube:
 
         return pixel_size * binning / magnification
 
-    def _validate(self) -> None:
-        """Validate dataset has correct shape.
-
-        Raises:
-            ValueError: Data is invalid.
-        """
-        self.root
-        self.data
-        self.exposure_times
-
-
-class Hypercube(Datacube):
-    """Sprectrally resolved data."""
-
-    def __init__(self, path: os.PathLike):
-        super().__init__(path)
-        self._validate()
-
     @property
     def wavelengths(self) -> h5py.Dataset:
         """Wavelength of each frame. (`file["Cube"]["Wavelength"]`)
@@ -368,13 +350,23 @@ class Hypercube(Datacube):
         Raises:
             ValueError: Data is invalid.
         """
+        self.root
+        self.data
+        self.exposure_times
         self.wavelengths
 
 
-class Video(Datacube):
+class SpectralCube(Datacube):
+    """Sprectrally resolved data."""
+
+    def __init__(self, path: os.PathLike | str | bytes):
+        super().__init__(path)
+
+
+class TemporalCube(Datacube):
     """Temporally resolved data."""
 
-    def __init__(self, path: os.PathLike):
+    def __init__(self, path: os.PathLike | str | bytes):
         super().__init__(path)
         self._validate()
 

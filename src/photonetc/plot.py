@@ -7,7 +7,7 @@ import tempfile
 import numpy as np
 import plotly.graph_objects as go
 import imageio.v3 as imageio
-from . import Hypercube
+from . import SpectralCube
 
 if TYPE_CHECKING:
     from .datacube import Datacube
@@ -179,7 +179,7 @@ def animate(
     frame_cnt = data.shape[0]
     annotations_text = None
     if annotations == "wavelength":
-        if not isinstance(cube, Hypercube):
+        if not isinstance(cube, SpectralCube):
             raise TypeError("Datacube does not have wavelength")
 
         annotations_text = [
@@ -303,7 +303,7 @@ def to_gif(
     frame_cnt = data.shape[0]
     annotations_text = None
     if annotations == "wavelength":
-        if not isinstance(cube, Hypercube):
+        if not isinstance(cube, SpectralCube):
             raise TypeError("Datacube does not have wavelength")
 
         annotations_text = [
