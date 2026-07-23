@@ -1,6 +1,6 @@
 from glob import glob
 import argparse
-from photonetc import SpectralCube, TemporalCube
+from photonetc import  TemporalCube, spectralcube
 import numpy as np
 
 
@@ -100,7 +100,41 @@ def temporal_to_spectral(temporal: list[TemporalCube], prefix: str):
     wavelengths = [cube.wavelengths[0] for cube in temporal]
     times = np.cumulative_sum(temporal[0].exposure_times)
     spectral = [hypercube[idx] for idx in range(hypercube.shape[0])]
+    
+    ref_data = temporal[0].to_abstract()
+    info_ref = ref_data.Info
+    cubes = []
+    for idx, images in enumerate(spectral):
+        info_cube = spectralcube.Cube(
+                AcqMode=info_ref.Cube.AcqMode,
+                LowerWavelength=wavelengths[0],
+                UpperWavelength=wavelengths[-1],
+                Name=prefix + str(times[idx]),
+                Type=info_ref.Cube.Type,
+        )
+        info_misc = spectralcube.Misc(
+                ZStage=info_ref.Misc.ZStage
+        )
+        info = spectralcube.Info(
+                Camera=info_ref.Camera,
+                Cube=info_cube,
+                Grating=info_ref.Grating,
+                Misc=info_misc,
+                Optics=info_ref.Optics,
+                System=info_ref.System,
+        )
 
+        cube = spectralcube.SpectralCube(
+                GratingId=,
+                Images=images,
+                Info=info,
+                Translation_X=,
+                Translation_Y=,
+                Wavelength=,
+        )
+
+
+    return cubes
 
 def run(input: list[str], output: str, time_threshold: float):
     temporal = []

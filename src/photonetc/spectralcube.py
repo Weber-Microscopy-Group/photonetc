@@ -14,7 +14,8 @@ class Cube:
     Name: str
     Type: str
     UpperWavelength: np.ndarray
-    WavelengthStep: np.ndarray
+    WavelengthStep: np.ndarray = field(default_factory=lambda: np.ones((1,)))
+
     CreationDate: str = field(
         default_factory=lambda: dt.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
     )
