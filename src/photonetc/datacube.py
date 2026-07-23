@@ -1,7 +1,6 @@
 """Hypercube data backed by a file."""
 
 from __future__ import annotations
-from photonetc.cube_info import Camera
 from typing import TYPE_CHECKING
 import datetime as dt
 import itertools
