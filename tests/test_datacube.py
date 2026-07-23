@@ -5,7 +5,7 @@ DATA_PATH_SPECTRALCUBE = pathlib.Path(__file__).parent.parent / "data/spectralcu
 DATA_PATH_TEMPORALCUBE = pathlib.Path(__file__).parent.parent / "data/temporalcube.h5"
 
 
-def test_hypercube_properties():
+def test_spectralcube_properties():
     PX_SIZE_NM = 6500
     MAGNIFICATION = 20
     BINS = 4
@@ -52,7 +52,7 @@ def test_hypercube_properties():
     assert px_size[1] == PX_SIZE_NM * BINS / MAGNIFICATION
 
 
-def test_video_properties():
+def test_temporalcube_properties():
     PX_SIZE_NM = 6500
     MAGNIFICATION = 20
     BINS = 4
@@ -97,3 +97,13 @@ def test_video_properties():
     assert px_size.shape == (2,)
     assert px_size[0] == PX_SIZE_NM * BINS / MAGNIFICATION
     assert px_size[1] == PX_SIZE_NM * BINS / MAGNIFICATION
+
+
+def test_spectralcube_to_abstract():
+    cube = pe.SpectralCube(DATA_PATH_SPECTRALCUBE)
+    cube.to_abstract()
+
+
+def test_temporalcube_to_abstract():
+    cube = pe.TemporalCube(DATA_PATH_TEMPORALCUBE)
+    cube.to_abstract()

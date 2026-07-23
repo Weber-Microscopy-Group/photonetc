@@ -1,4 +1,4 @@
-"""A spectrally resolved data cube."""
+"""Spectrally resolved data cube."""
 
 from dataclasses import dataclass, field
 import numpy as np
@@ -7,7 +7,7 @@ import datetime as dt
 
 
 @dataclass
-class InfoCube:
+class Cube:
     AcqMode: str
     LowerWavelength: np.ndarray
     Name: str
@@ -21,16 +21,16 @@ class InfoCube:
 
 
 @dataclass
-class InfoMisc:
+class Misc:
     ZStage: MiscZStage = field(default_factory=MiscZStage)
 
 
 @dataclass
 class Info:
     Camera: Camera
-    Cube: InfoCube
+    Cube: Cube
     Grating: Grating
-    Misc: InfoMisc
+    Misc: Misc
     Optics: Optics
     System: System
 

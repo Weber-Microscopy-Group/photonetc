@@ -1,4 +1,4 @@
-"""A temporally resolved data cube."""
+"""Temporally resolved data cube."""
 
 from dataclasses import dataclass, field
 import numpy as np
@@ -7,35 +7,42 @@ from .cube_info import Camera, Grating, Optics, System, MiscZStage
 
 
 @dataclass
-class InfoCube:
+class CubeZaxis:
+    Key: str
+
+
+@dataclass
+class Cube:
     AcqMode: str
-    Broadband: np.ndarray
+    BroadBand: np.ndarray
+    LaserNm: np.ndarray
     Name: str
     Type: str
+    ZAxis: CubeZaxis
     CreationDate: str = field(
         default_factory=lambda: dt.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
     )
 
 
 @dataclass
-class InfoMiscIllumination:
+class MiscIllumination:
     Intensity: np.ndarray
     Mode: str
     Source: str
 
 
 @dataclass
-class InfoMisc:
-    Illumination: InfoMiscIllumination
+class Misc:
+    Illumination: MiscIllumination
     ZStage: MiscZStage = field(default_factory=MiscZStage)
 
 
 @dataclass
 class Info:
     Camera: Camera
-    Cube: InfoCube
+    Cube: Cube
     Grating: Grating
-    Misc: InfoMisc
+    Misc: Misc
     Optics: Optics
     System: System
 

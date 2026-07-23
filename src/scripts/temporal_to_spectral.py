@@ -72,9 +72,7 @@ def validate_timestamps(
     return [idx for gdx, group in enumerate(times) for idx in group if gdx]
 
 
-def validate_wavelengths(
-    cubes: list[TemporalCube]
-) -> None | list[int]:
+def validate_wavelengths(cubes: list[TemporalCube]) -> None | list[int]:
     """Validate all wavelengths in a temporal cube are the same.
 
     Args:
@@ -101,10 +99,8 @@ def temporal_to_spectral(temporal: list[TemporalCube], prefix: str):
     hypercube = np.transpose(hypercube, (1, 0, 2, 3))
     wavelengths = [cube.wavelengths[0] for cube in temporal]
     times = np.cumulative_sum(temporal[0].exposure_times)
-    spectral = [
-        
-    for idx, time in enumerate(times)
-    ]
+    spectral = [hypercube[idx] for idx in range(hypercube.shape[0])]
+
 
 def run(input: list[str], output: str, time_threshold: float):
     temporal = []
@@ -127,9 +123,9 @@ def run(input: list[str], output: str, time_threshold: float):
 
     invalid = validate_wavelengths(temporal)
     if invalid is not None:
-            invalid_paths = [input[idx] for idx in invalid]
-            raise RuntimeError(f"Invalid wavelengths: {invalid_paths}")
-    
+        invalid_paths = [input[idx] for idx in invalid]
+        raise RuntimeError(f"Invalid wavelengths: {invalid_paths}")
+
     temporal_to_spectral(temporal, output)
 
 

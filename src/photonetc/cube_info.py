@@ -37,6 +37,7 @@ class CameraDynamicProperties:
 class Camera:
     XAxis: CameraAxis
     YAxis: CameraAxis
+    DynamicProperties: CameraDynamicProperties
     BitDepth: np.ndarray
     CaptorSize: np.ndarray
     CoolerSetPoint: str
@@ -91,7 +92,13 @@ class GratingSlotRegistration:
 @dataclass
 class GratingSlot:
     Calibration: GratingSlotCalibration
-    Registration: list[GratingSlotRegistration] = field(default_factory=list)
+    BeamSide: str
+    FWHM: np.ndarray
+    MaxWavelength: np.ndarray
+    MinWavelength: np.ndarray
+    Name: str
+    Type: str
+    Registration: dict[str, GratingSlotRegistration] = field(default_factory=dict)
 
 
 @dataclass
@@ -104,7 +111,7 @@ class GratingSlotEmpty:
 
 
 class Grating:
-    def init(self, gratings: list[Union[GratingSlot, GratingSlotEmpty]] = []):
+    def __init__(self, gratings: dict[str, Union[GratingSlot, GratingSlotEmpty]] = {}):
         self.gratings = gratings
 
 

@@ -1,11 +1,13 @@
 """Hypercube data backed by a file."""
 
 from __future__ import annotations
+from photonetc.cube_info import Camera
 from typing import TYPE_CHECKING
 import datetime as dt
 import itertools
 import numpy as np
 import h5py
+from . import cube_info as cinfo, spectralcube, temporalcube
 
 if TYPE_CHECKING:
     import os
@@ -15,10 +17,16 @@ class CameraInfo:
     """Camera info."""
 
     def __init__(self, data: h5py.Group):
+        """Create a new Camera info object.
+
+        Args:
+            data (h5py.Group): Group representing camera info.
+                (`file["Cube"]["Info"]["Camera"]`)
+        """
         self._data = data
         self._validate()
 
-    def __getattr__(self, name):
+    def __getitem__(self, name):
         return self._data[name]
 
     @property
@@ -107,15 +115,111 @@ class CameraInfo:
         self.binning
         self.pixel_size
 
+    def to_abstract(self) -> cinfo.Camera:
+        data_x_axis = self._data["XAxis"]
+        if not isinstance(data_x_axis, h5py.Group):
+            raise ValueError('`data["XAxis"]` is not a group')
+
+        data_x_axis_0 = data_x_axis["0"]
+        if not isinstance(data_x_axis_0, h5py.Group):
+            raise ValueError('`data["XAxis"]["0"]` is not a group')
+
+        data_x_axis_1 = data_x_axis["1"]
+        if not isinstance(data_x_axis_1, h5py.Group):
+            raise ValueError('`data["XAxis"]["1"]` is not a group')
+
+        data_y_axis = self._data["YAxis"]
+        if not isinstance(data_y_axis, h5py.Group):
+            raise ValueError('`data["YAxis"]` is not a group')
+
+        data_y_axis_0 = data_y_axis["0"]
+        if not isinstance(data_y_axis_0, h5py.Group):
+            raise ValueError('`data["YAxis"]["0"]` is not a group')
+
+        data_y_axis_1 = data_y_axis["1"]
+        if not isinstance(data_y_axis_1, h5py.Group):
+            raise ValueError('`data["YAxis"]["1"]` is not a group')
+
+        data_dynamic_properties = self._data["DynamicProperties"]
+        if not isinstance(data_dynamic_properties, h5py.Group):
+            raise ValueError('`data["DynamicProperties"]` is not a group')
+
+        x_axis_0 = cinfo.CameraAxis0(Name=data_x_axis_0.attrs["Name"])
+        x_axis_1 = cinfo.CameraAxis1(
+            Coefs=data_x_axis_1.attrs["Coefs"],
+            Decimals=data_x_axis_1.attrs["Decimals"],
+            Name=data_x_axis_1.attrs["Name"],
+            Unit=data_x_axis_1.attrs["Unit"],
+        )
+        x_axis = cinfo.CameraAxis(
+            axis_0=x_axis_0,
+            axis_1=x_axis_1,
+            Coefs=data_x_axis.attrs["Coefs"],
+            Decimals=data_x_axis.attrs["Decimals"],
+            Name=data_x_axis.attrs["Name"],
+            Unit=data_x_axis.attrs["Unit"],
+        )
+
+        y_axis_0 = cinfo.CameraAxis0(Name=data_y_axis_0.attrs["Name"])
+        y_axis_1 = cinfo.CameraAxis1(
+            Coefs=data_y_axis_1.attrs["Coefs"],
+            Decimals=data_y_axis_1.attrs["Decimals"],
+            Name=data_y_axis_1.attrs["Name"],
+            Unit=data_y_axis_1.attrs["Unit"],
+        )
+        y_axis = cinfo.CameraAxis(
+            axis_0=y_axis_0,
+            axis_1=y_axis_1,
+            Coefs=data_y_axis.attrs["Coefs"],
+            Decimals=data_y_axis.attrs["Decimals"],
+            Name=data_y_axis.attrs["Name"],
+            Unit=data_y_axis.attrs["Unit"],
+        )
+
+        dynamic_properties = cinfo.CameraDynamicProperties(
+            ROIMode=data_dynamic_properties.attrs["ROI Mode"],
+        )
+
+        return cinfo.Camera(
+            XAxis=x_axis,
+            YAxis=y_axis,
+            DynamicProperties=dynamic_properties,
+            BitDepth=self._data.attrs["BitDepth"],
+            CaptorSize=self._data.attrs["CaptorSize"],
+            CoolerSetPoint=self._data.attrs["CoolerSetPoint"],
+            DetectorMode=self._data.attrs["DetectorMode"],
+            GradientOrientation=self._data.attrs["GradientOrientation"],
+            Model=self._data.attrs["Model"],
+            Name=self._data.attrs["Name"],
+            PixelSizeNm=self._data.attrs["PixelSizeNm"],
+            ReadoutSpeed=self._data.attrs["ReadoutSpeed"],
+            RoiSize=self._data.attrs["RoiSize"],
+            SN=self._data.attrs["SN"],
+            Temperature=self._data.attrs["Temperature"],
+            VerticalFlip=self._data.attrs["VerticalFlip"],
+            AveragingMode=self._data.attrs["AveragingMode"],
+            Binning=self._data.attrs["Binning"],
+            Orientation=self._data.attrs["Orientation"],
+            RoiStart=self._data.attrs["RoiStart"],
+            Shutter=self._data.attrs["Shutter"],
+            Trigger=self._data.attrs["Trigger"],
+        )
+
 
 class OpticsInfo:
     """Optics info."""
 
     def __init__(self, data: h5py.Group):
+        """Create a new Optics info object.
+
+        Args:
+            data (h5py.Group): Group representing optics info.
+                (`file["Cube"]["Info"]["Optics"]`)
+        """
         self._data = data
         self._validate()
 
-    def __getattr__(self, name):
+    def __getitem__(self, name):
         return self._data[name]
 
     @property
@@ -151,6 +255,12 @@ class OpticsInfo:
         """Validate data has the correct shape."""
         self.objective
 
+    def to_abstract(self) -> cinfo.Optics:
+        return cinfo.Optics(
+            FocusStatus=self._data.attrs["FocusStatus"],
+            Objective=self._data.attrs["Objective"],
+        )
+
 
 class Info:
     """Info. (`file["Cube"]["Info"]`)"""
@@ -168,7 +278,7 @@ class Info:
         self._camera = CameraInfo(camera)
         self._optics = OpticsInfo(optics)
 
-    def __getattr__(self, name):
+    def __getitem__(self, name):
         return self._data[name]
 
     @property
@@ -178,6 +288,80 @@ class Info:
     @property
     def optics(self) -> OpticsInfo:
         return self._optics
+
+
+def info_grating_to_abstract(info_grating: h5py.Group) -> cinfo.Grating:
+    gratings = {}
+    for key, ginfo in info_grating.items():
+        if not isinstance(ginfo, h5py.Group):
+            raise ValueError(f'`data["Info"]["Grating"]["{key}"]` is not a group.')
+
+        children = ginfo.keys()
+        if len(children) == 0:
+            slot = cinfo.GratingSlotEmpty(
+                FWHM=ginfo.attrs["FWHM"],
+                MaxWavelength=ginfo.attrs["MaxWavelength"],
+                MinWavelength=ginfo.attrs["MinWavelength"],
+                Name=ginfo.attrs["Name"],
+                Type=ginfo.attrs["Type"],
+            )
+            gratings[key] = slot
+        elif "Calibration" in children and "Registration" in children:
+            calinfo = ginfo["Calibration"]
+            if not isinstance(calinfo, h5py.Group):
+                raise ValueError(
+                    f'`data["Info"]["Grating"]["{key}"]["Calibration"]` is not a group.'
+                )
+
+            if not isinstance(ginfo["Registration"], h5py.Group):
+                raise ValueError(
+                    f'`data["Info"]["Grating"]["{key}"]["Registration"]` is not a group.'
+                )
+
+            cal = cinfo.GratingSlotCalibration(
+                Curve=calinfo.attrs["Curve"],
+                Factor=calinfo.attrs["Factor"],
+                FocalLengthCoef=calinfo.attrs["FocalLengthCoef"],
+                FocalLengthUm=calinfo.attrs["FocalLengthUm"],
+                Offset=calinfo.attrs["Offset"],
+                Period=calinfo.attrs["Period"],
+                Slope=calinfo.attrs["Slope"],
+                StageOffset=calinfo.attrs["StageOffset"],
+                Temperature=calinfo.attrs["Temperature"],
+                User=calinfo.attrs["User"],
+            )
+
+            registrations = {}
+            for rkey, reginfo in ginfo["Registration"].items():
+                if not isinstance(reginfo, h5py.Group):
+                    raise ValueError(
+                        f'`data["Info"]["Grating"]["{key}"]["Registration"]["{rkey}"]` is not a group.'
+                    )
+
+                reg = cinfo.GratingSlotRegistration(
+                    Scaling_X=reginfo.attrs["Scaling_X"],
+                    Scaling_Y=reginfo.attrs["Scaling_Y"],
+                    Translation_X=reginfo.attrs["Translation_X"],
+                    Translation_Y=reginfo.attrs["Translation_Y"],
+                )
+
+                registrations[rkey] = reg
+
+            slot = cinfo.GratingSlot(
+                Calibration=cal,
+                BeamSide=ginfo.attrs["BeamSide"],
+                FWHM=ginfo.attrs["FWHM"],
+                MaxWavelength=ginfo.attrs["MaxWavelength"],
+                MinWavelength=ginfo.attrs["MinWavelength"],
+                Name=ginfo.attrs["Name"],
+                Type=ginfo.attrs["Type"],
+                Registration=registrations,
+            )
+            gratings[key] = slot
+        else:
+            raise ValueError(f"unknown grating type for grating {key}")
+
+    return cinfo.Grating(gratings=gratings)
 
 
 class Datacube:
@@ -197,7 +381,7 @@ class Datacube:
         self._info = Info(info)
         self._validate()
 
-    def __getattr__(self, name):
+    def __getitem__(self, name):
         return self._file[name]
 
     @property
@@ -362,6 +546,91 @@ class SpectralCube(Datacube):
     def __init__(self, path: os.PathLike | str | bytes):
         super().__init__(path)
 
+    def to_abstract(self) -> spectralcube.SpectralCube:
+        grating_id = self.root["GratingID"]
+        if not isinstance(grating_id, h5py.Dataset):
+            raise ValueError('`data["GratingID"]` is not a dataset.')
+
+        images = self.root["Images"]
+        if not isinstance(images, h5py.Dataset):
+            raise ValueError('`data["Images"]` is not a dataset.')
+
+        time_exposure = self.root["TimeExposure"]
+        if not isinstance(time_exposure, h5py.Dataset):
+            raise ValueError('`data["TimeExposure"]` is not a dataset.')
+
+        translation_x = self.root["Translation_X"]
+        if not isinstance(translation_x, h5py.Dataset):
+            raise ValueError('`data["Translation_X"]` is not a dataset.')
+
+        translation_y = self.root["Translation_Y"]
+        if not isinstance(translation_y, h5py.Dataset):
+            raise ValueError('`data["Translation_Y"]` is not a dataset.')
+
+        wavelength = self.root["Wavelength"]
+        if not isinstance(wavelength, h5py.Dataset):
+            raise ValueError('`data["Wavelength"]` is not a dataset.')
+
+        info_cube = self.info["Cube"]
+        if not isinstance(info_cube, h5py.Group):
+            raise ValueError('`data["Info"]["Cube"]` is not a group.')
+
+        info_grating = self.info["Grating"]
+        if not isinstance(info_grating, h5py.Group):
+            raise ValueError('`data["Info"]["Grating"]` is not a group.')
+
+        info_misc = self.info["Misc"]
+        if not isinstance(info_misc, h5py.Group):
+            raise ValueError('`data["Info"]["Misc"]` is not a group.')
+
+        info_misc_zstage = info_misc["Z-Stage"]
+        if not isinstance(info_misc_zstage, h5py.Group):
+            raise ValueError('`data["Info"]["Misc"]["Z-Stage"]` is not a group.')
+
+        info_system = self.info["System"]
+        if not isinstance(info_system, h5py.Group):
+            raise ValueError('`data["Info"]["System"]` is not a group.')
+
+        cube = spectralcube.Cube(
+            AcqMode=info_cube.attrs["AcqMode"],
+            LowerWavelength=info_cube.attrs["LowerWavelength"],
+            Name=info_cube.attrs["Name"],
+            Type=info_cube.attrs["Type"],
+            UpperWavelength=info_cube.attrs["UpperWavelength"],
+            WavelengthStep=info_cube.attrs["WavelengthStep"],
+            CreationDate=info_cube.attrs["CreationDate"],
+            FixedTimeExposure=info_cube.attrs["FixedTimeExposure"],
+        )
+
+        grating = info_grating_to_abstract(info_grating)
+        misc_zstage = cinfo.MiscZStage(Position=info_misc_zstage.attrs["Position"])
+        misc = spectralcube.Misc(ZStage=misc_zstage)
+
+        system = cinfo.System(
+            SN=info_system.attrs["SN"],
+            SoftwareVersion=info_system.attrs["SoftwareVersion"],
+            Type=info_system.attrs["Type"],
+        )
+
+        info = spectralcube.Info(
+            Camera=self.info.camera.to_abstract(),
+            Cube=cube,
+            Grating=grating,
+            Misc=misc,
+            Optics=self.info.optics.to_abstract(),
+            System=system,
+        )
+
+        return spectralcube.SpectralCube(
+            GratingId=grating_id[()],
+            Images=images[()],
+            Info=info,
+            TimeExposure=time_exposure[()],
+            Translation_X=translation_x[()],
+            Translation_Y=translation_y[()],
+            Wavelength=wavelength[()],
+        )
+
 
 class TemporalCube(Datacube):
     """Temporally resolved data."""
@@ -393,3 +662,95 @@ class TemporalCube(Datacube):
             ValueError: Data is invalid.
         """
         self.timestamps
+
+    def to_abstract(self) -> temporalcube.TemporalCube:
+        angle = self.root["Angle"]
+        if not isinstance(angle, h5py.Dataset):
+            raise ValueError('`data["Angle"] is not a dataset.')
+
+        images = self.root["Images"]
+        if not isinstance(images, h5py.Dataset):
+            raise ValueError('`data["Images"] is not a dataset.')
+
+        time_exposure = self.root["TimeExposure"]
+        if not isinstance(time_exposure, h5py.Dataset):
+            raise ValueError('`data["TimeExposure"] is not a dataset.')
+
+        timestamp = self.root["Timestamp"]
+        if not isinstance(timestamp, h5py.Dataset):
+            raise ValueError('`data["Timestamp"] is not a dataset.')
+
+        info_cube = self.info["Cube"]
+        if not isinstance(info_cube, h5py.Group):
+            raise ValueError('`data["Info"]["Cube"]` is not a group.')
+
+        info_cube_zaxis = info_cube["ZAxis"]
+        if not isinstance(info_cube_zaxis, h5py.Group):
+            raise ValueError('`data["Info"]["Cube"]["ZAxis"]` is not a group.')
+
+        info_grating = self.info["Grating"]
+        if not isinstance(info_grating, h5py.Group):
+            raise ValueError('`data["Info"]["Grating"]` is not a group.')
+
+        info_misc = self.info["Misc"]
+        if not isinstance(info_misc, h5py.Group):
+            raise ValueError('`data["Info"]["Misc"]` is not a group.')
+
+        info_misc_zstage = info_misc["Z-Stage"]
+        if not isinstance(info_misc_zstage, h5py.Group):
+            raise ValueError('`data["Info"]["Misc"]["Z-Stage"]` is not a group.')
+
+        info_misc_ill = info_misc["Illumination"]
+        if not isinstance(info_misc_ill, h5py.Group):
+            raise ValueError('`data["Info"]["Misc"]["Illumination"]` is not a group.')
+
+        info_system = self.info["System"]
+        if not isinstance(info_system, h5py.Group):
+            raise ValueError('`data["Info"]["System"]` is not a group.')
+
+        cube_zaxis = temporalcube.CubeZaxis(Key=info_cube_zaxis.attrs["Key"])
+        cube = temporalcube.Cube(
+            AcqMode=info_cube.attrs["AcqMode"],
+            BroadBand=info_cube.attrs["BroadBand"],
+            LaserNm=info_cube.attrs["LaserNm"],
+            Name=info_cube.attrs["Name"],
+            Type=info_cube.attrs["Type"],
+            ZAxis=cube_zaxis,
+            CreationDate=info_cube.attrs["CreationDate"],
+        )
+
+        grating = info_grating_to_abstract(info_grating)
+
+        misc_zstage = cinfo.MiscZStage(Position=info_misc_zstage.attrs["Position"])
+        misc_zstage_ill = temporalcube.MiscIllumination(
+            Intensity=info_misc_ill.attrs["Intensity"],
+            Mode=info_misc_ill.attrs["Mode"],
+            Source=info_misc_ill.attrs["Source"],
+        )
+        misc = temporalcube.Misc(
+            Illumination=misc_zstage_ill,
+            ZStage=misc_zstage,
+        )
+
+        system = cinfo.System(
+            SN=info_system.attrs["SN"],
+            SoftwareVersion=info_system.attrs["SoftwareVersion"],
+            Type=info_system.attrs["Type"],
+        )
+
+        info = temporalcube.Info(
+            Camera=self.camera.to_abstract(),
+            Cube=cube,
+            Grating=grating,
+            Misc=misc,
+            Optics=self.info.optics.to_abstract(),
+            System=system,
+        )
+
+        return temporalcube.TemporalCube(
+            Angle=angle,
+            Images=images[()],
+            Info=info,
+            TimeExposure=time_exposure[()],
+            Timestamp=timestamp,
+        )
