@@ -1,6 +1,6 @@
 """Temporally resolved data cube."""
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from dataclasses import dataclass, field
 import numpy as np
 import datetime as dt
@@ -90,6 +90,7 @@ class TemporalCube:
     Info: Info
     TimeExposure: np.ndarray
     Timestamp: np.ndarray
+    Wavelength: Optional[np.ndarray] = None
 
     def to_h5(self, name: str) -> h5py.File:
         f = h5py.File(name, mode="w")
@@ -100,4 +101,8 @@ class TemporalCube:
         root.create_dataset("Timestamp", self.Timestamp)
         info = root.create_group("Info")
         self.Info.to_h5(info)
+
+        if self.Wavelength is not None:
+            root.create_dataset("Wavelength", self.Wavelength)
+
         return f

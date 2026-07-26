@@ -1,7 +1,8 @@
 """Hypercube data backed by a file."""
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+from enum import Enum
 import datetime as dt
 import itertools
 import numpy as np
@@ -10,6 +11,11 @@ from . import cube_info as cinfo, spectralcube, temporalcube
 
 if TYPE_CHECKING:
     import os
+
+
+class FilterMode(Enum):
+    BANDPASS = 0
+    BROADBAND = 1
 
 
 class CameraInfo:
@@ -510,6 +516,23 @@ class Datacube:
 
         return pixel_size * binning / magnification
 
+    def _validate(self) -> None:
+        """Validate dataset has correct shape.
+
+        Raises:
+            ValueError: Data is invalid.
+        """
+        self.root
+        self.data
+        self.exposure_times
+
+
+class SpectralCube(Datacube):
+    """Sprectrally resolved data."""
+
+    def __init__(self, path: os.PathLike | str | bytes):
+        super().__init__(path)
+
     @property
     def wavelengths(self) -> h5py.Dataset:
         """Wavelength of each frame. (`file["Cube"]["Wavelength"]`)
@@ -527,23 +550,65 @@ class Datacube:
 
         return data
 
+    @property
+    def grating_ids(self) -> h5py.Dataset:
+        """Grating id of each frame. (`file["Cube"]["GratingID"]`)
+
+        Raises:
+            ValueError: Invalid data.
+
+        Returns:
+            h5py.Dataset: Frame grating id.
+        """
+        KEY = "GratingID"
+        data = self.root[KEY]
+        if not isinstance(data, h5py.Dataset):
+            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+
+        return data
+
+    @property
+    def translation_x(self) -> h5py.Dataset:
+        """X translation of each frame. (`file["Cube"]["Translation_X"]`)
+
+        Raises:
+            ValueError: Invalid data.
+
+        Returns:
+            h5py.Dataset: Frame x translation.
+        """
+        KEY = "Translation_X"
+        data = self.root[KEY]
+        if not isinstance(data, h5py.Dataset):
+            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+
+        return data
+
+    @property
+    def translation_y(self) -> h5py.Dataset:
+        """Y translation of each frame. (`file["Cube"]["Translation_Y"]`)
+
+        Raises:
+            ValueError: Invalid data.
+
+        Returns:
+            h5py.Dataset: Frame y translation.
+        """
+        KEY = "Translation_Y"
+        data = self.root[KEY]
+        if not isinstance(data, h5py.Dataset):
+            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+
+        return data
+
     def _validate(self) -> None:
         """Validate dataset has correct shape.
 
         Raises:
             ValueError: Data is invalid.
         """
-        self.root
-        self.data
-        self.exposure_times
         self.wavelengths
-
-
-class SpectralCube(Datacube):
-    """Sprectrally resolved data."""
-
-    def __init__(self, path: os.PathLike | str | bytes):
-        super().__init__(path)
+        self.grating_ids
 
     def to_abstract(self) -> spectralcube.SpectralCube:
         grating_id = self.root["GratingID"]
@@ -653,6 +718,54 @@ class TemporalCube(Datacube):
         return [
             dt.datetime.strptime(time.decode(), "%Y/%m/%d %H:%M:%S.%f") for time in data
         ]
+
+    @property
+    def wavelengths(self) -> Optional[h5py.Dataset]:
+        """Wavelength of each frame. (`file["Cube"]["Wavelength"]`)
+        Only available if cube was taken while in band pass mode.
+
+        Returns:
+            Optional[h5py.Dataset]: Wavelength of each frame, if available.
+        """
+        KEY = "Wavelength"
+        if KEY not in self.root:
+            return None
+
+        data = self.root[KEY]
+        if not isinstance(data, h5py.Dataset):
+            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+
+        return data
+
+    @property
+    def grating_ids(self) -> Optional[h5py.Dataset]:
+        """Grating id of each frame. (`file["Cube"]["GratingID"]`)
+
+        Raises:
+            ValueError: Invalid data.
+
+        Returns:
+            Optional[h5py.Dataset]: Frame grating id, if available.
+        """
+        KEY = "GratingID"
+        if KEY not in self.root:
+            return None
+
+        data = self.root[KEY]
+        if not isinstance(data, h5py.Dataset):
+            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+
+        return data
+
+    @property
+    def broadband(self) -> FilterMode:
+        """If the cube is in bandpass or broadband mode.
+
+        Returns:
+            FilterMode: Filter mode of the cube.
+        """
+        mode_id = self.info["Cube"].attrs["BroadBand"]
+        return FilterMode(mode_id)
 
     def _validate(self) -> None:
         """Validate dataset has correct shape.
