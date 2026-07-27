@@ -1,11 +1,11 @@
 """Shared info between temporal and spectral cubes."""
 
-from typing import Union, TYPE_CHECKING
-from dataclasses import dataclass, field
-import numpy as np
+from __future__ import annotations
 
-if TYPE_CHECKING:
-    import h5py
+from dataclasses import dataclass, field
+
+import h5py
+import numpy as np
 
 
 @dataclass
@@ -92,7 +92,7 @@ class Camera:
     Shutter: str = "Auto/None"
     Trigger: str = "None"
 
-    def to_h5(self, group: h5py.Dataset):
+    def to_h5(self, group: h5py.Group):
         group.attrs["XAxis"] = self.XAxis
         group.attrs["YAxis"] = self.YAxis
         group.attrs["DynamicProperties"] = self.DynamicProperties
@@ -196,7 +196,11 @@ class GratingSlotEmpty:
 
 
 class Grating:
-    def __init__(self, gratings: dict[str, Union[GratingSlot, GratingSlotEmpty]] = {}):
+    def __init__(
+        self, gratings: dict[str, GratingSlot | GratingSlotEmpty] | None = None
+    ):
+        if gratings is None:
+            gratings = {}
         self.gratings = gratings
 
     def to_h5(self, group: h5py.Group):

@@ -3,16 +3,20 @@ To a series of spectral cubes each representing a certain time.
 This requires a reference cube that is spectrally resolved across the same wavelengths
 the temporal cubes cover."""
 
-from typing import Union
-from glob import glob
+from __future__ import annotations
+
 import argparse
-from photonetc import TemporalCube, SpectralCube, spectralcube
+from glob import glob
+
+import h5py
 import numpy as np
+
+from photonetc import SpectralCube, TemporalCube, spectralcube
 
 
 def validate_reference(
     reference: SpectralCube, cubes: list[TemporalCube]
-) -> Union[None, list[float]]:
+) -> None | list[float]:
     """Validates the reference cube contains required wavelengths for the cubes.
     Assumes data cubes have already been validated.
 
@@ -23,7 +27,7 @@ def validate_reference(
     Returns:
         None | list[float]]: Missing reference wavelengths or `None` if all valid.
     """
-    wavelengths_cubes = [cube.wavelengths[0] for cube in cubes]
+    wavelengths_cubes = [cube.wavelengths[0] for cube in cubes]  # type: ignore
     wavelength_ref = reference.wavelengths
     invalid = []
     for wavelength in wavelengths_cubes:
@@ -36,7 +40,7 @@ def validate_reference(
         return invalid
 
 
-def validate_shapes(cubes: list[TemporalCube]) -> Union[None, list[int]]:
+def validate_shapes(cubes: list[TemporalCube]) -> None | list[int]:
     """Validates all cubes have the same shape.
 
     Args:
@@ -70,7 +74,7 @@ def validate_shapes(cubes: list[TemporalCube]) -> Union[None, list[int]]:
 
 def validate_timestamps(
     cubes: list[TemporalCube], threshold: float
-) -> Union[None, list[int]]:
+) -> None | list[int]:
     """Validate all cubes have the same frame exposures.
 
     Args:
@@ -104,7 +108,7 @@ def validate_timestamps(
         return None
 
 
-def validate_wavelengths(cubes: list[TemporalCube]) -> Union[None, list[int]]:
+def validate_wavelengths(cubes: list[TemporalCube]) -> None | list[int]:
     """Validate all wavelengths in a temporal cube are the same.
 
     Args:
@@ -120,7 +124,7 @@ def validate_wavelengths(cubes: list[TemporalCube]) -> Union[None, list[int]]:
             invalid.append(idx)
             continue
 
-        if not np.ptp(wavelengths[()]) == 0:
+        if np.ptp(wavelengths[()]) != 0:
             invalid.append(idx)
 
     if len(invalid) == 0:
@@ -129,7 +133,7 @@ def validate_wavelengths(cubes: list[TemporalCube]) -> Union[None, list[int]]:
         return invalid
 
 
-def validate_gratings(cubes: list[TemporalCube]) -> Union[None, list[int]]:
+def validate_gratings(cubes: list[TemporalCube]) -> None | list[int]:
     """Validate all grating ids in a temporal cube are the same.
 
     Args:
@@ -145,7 +149,7 @@ def validate_gratings(cubes: list[TemporalCube]) -> Union[None, list[int]]:
             invalid.append(idx)
             continue
 
-        if not np.ptp(gratings[()]) == 0:
+        if np.ptp(gratings[()]) != 0:
             invalid.append(idx)
 
     if len(invalid) == 0:
@@ -167,18 +171,18 @@ def temporal_to_spectral(
     Returns:
         tuple[list[spectralcube.SpectralCube], np.ndarray]: tuple of `(spectral cubes, times)`
     """
-    temporal.sort(key=lambda cube: cube.wavelengths[0])
+    temporal.sort(key=lambda cube: cube.wavelengths[0])  # type: ignore
 
-    wavelengths = np.array([cube.wavelengths[0] for cube in temporal])
-    gratings = np.array([cube.grating_ids[0] for cube in temporal])
+    wavelengths = np.array([cube.wavelengths[0] for cube in temporal])  # type: ignore
+    gratings = np.array([cube.grating_ids[0] for cube in temporal])  # type: ignore
     times = np.cumulative_sum(temporal[0].exposure_times)
 
     wavelengths_ref = reference.wavelengths
     translation_x_ref = reference["Translation_X"]
     translation_y_ref = reference["Translation_Y"]
     w_idx = np.where(np.isin(wavelengths_ref, wavelengths))[0]
-    translation_x = translation_x_ref[w_idx]
-    translation_y = translation_y_ref[w_idx]
+    translation_x = translation_x_ref[w_idx]  # type: ignore
+    translation_y = translation_y_ref[w_idx]  # type: ignore
 
     data = [t.data for t in temporal]
     hypercube = np.stack(data)
@@ -211,8 +215,8 @@ def temporal_to_spectral(
             Images=images,
             Info=info,
             TimeExposure=times,
-            Translation_X=translation_x,
-            Translation_Y=translation_y,
+            Translation_X=translation_x,  # type: ignore
+            Translation_Y=translation_y,  # type: ignore
             Wavelength=wavelengths,
         )
 
@@ -277,6 +281,12 @@ def run(reference: str, input: list[str], output: str, time_threshold: float):
         raise RuntimeError(
             f"Reference cube does not cover required wavelengths; missing {invalid}"
         )
+
+    if not isinstance(ref_cube["Translation_X"], h5py.Dataset):
+        raise ValueError("Reference data 'Translation_X' is invalid")  # noqa: TRY004
+
+    if not isinstance(ref_cube["Translation_Y"], h5py.Dataset):
+        raise ValueError("Reference data 'Translation_X' is invalid")  # noqa: TRY004
 
     cubes, times = temporal_to_spectral(ref_cube, temporal, output)
     save_cubes(cubes, times, output)

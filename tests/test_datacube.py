@@ -1,5 +1,6 @@
-import photonetc as pe
 import pathlib
+
+import photonetc as pe
 
 DATA_PATH_SPECTRALCUBE = pathlib.Path(__file__).parent.parent / "data/spectralcube.h5"
 DATA_PATH_TEMPORALCUBE = pathlib.Path(__file__).parent.parent / "data/temporalcube.h5"

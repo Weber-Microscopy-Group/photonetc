@@ -1,13 +1,17 @@
 """Hypercube data backed by a file."""
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional
-from enum import Enum
+
 import datetime as dt
 import itertools
-import numpy as np
+from enum import Enum
+from typing import TYPE_CHECKING
+
 import h5py
-from . import cube_info as cinfo, spectralcube, temporalcube
+import numpy as np
+
+from . import cube_info as cinfo
+from . import spectralcube, temporalcube
 
 if TYPE_CHECKING:
     import os
@@ -39,7 +43,7 @@ class CameraInfo:
         """Region of interest size in physical pixels. (`file["Cube"]["Info"]["Camera"].RoiSize`)
 
         Raises:
-            ValueError: Data is invalid.
+            TypeError: Data is invalid.
 
         Returns:
             np.ndarray: Region of interest size in physical pixels; `[width, height]`.
@@ -47,7 +51,7 @@ class CameraInfo:
         KEY = "RoiSize"
         data = self._data.attrs[KEY]
         if not isinstance(data, np.ndarray):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an ndarray.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an ndarray.")
 
         return data
 
@@ -56,7 +60,7 @@ class CameraInfo:
         """Start of region of interest in physical pixels. (`file["Cube"]["Info"]["Camera"].RoiStart`)
 
         Raises:
-            ValueError: Data is invalid.
+            TypeError: Data is invalid.
 
         Returns:
             np.ndarray: Start of region of interest in physical pixels; `[x, y]`.
@@ -64,7 +68,7 @@ class CameraInfo:
         KEY = "RoiStart"
         data = self._data.attrs[KEY]
         if not isinstance(data, np.ndarray):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an ndarray.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an ndarray.")
 
         return data
 
@@ -84,7 +88,7 @@ class CameraInfo:
         """Pixel binning. (`file["Cube"]["Info"]["Camera"].Binning`)
 
         Raises:
-            ValueError: Data is invalid.
+            TypeError: Data is invalid.
 
         Returns:
             np.ndarray: Pixel binning; `[width, height]`.
@@ -92,7 +96,7 @@ class CameraInfo:
         KEY = "Binning"
         data = self._data.attrs[KEY]
         if not isinstance(data, np.ndarray):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an ndarray.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an ndarray.")
 
         return data
 
@@ -101,7 +105,7 @@ class CameraInfo:
         """Pixel size in nanometers. (`file["Cube"]["Info"]["Camera"].PixelSizeNm`)
 
         Raises:
-            ValueError: Data is invalid.
+            TypeError: Data is invalid.
 
         Returns:
             int: Pixel size in nanometers. Pixel is assumed square.
@@ -109,45 +113,45 @@ class CameraInfo:
         KEY = "PixelSizeNm"
         data = self._data.attrs[KEY]
         if not isinstance(data, np.ndarray):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an ndarray.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an ndarray.")
 
         return float(data[0])
 
     def _validate(self):
         """Validate data has the correct shape."""
-        self.roi_size
-        self.roi_start
-        self.binning
-        self.pixel_size
+        self.roi_size  # noqa: B018
+        self.roi_start  # noqa: B018
+        self.binning  # noqa: B018
+        self.pixel_size  # noqa: B018
 
     def to_abstract(self) -> cinfo.Camera:
         data_x_axis = self._data["XAxis"]
         if not isinstance(data_x_axis, h5py.Group):
-            raise ValueError('`data["XAxis"]` is not a group')
+            raise TypeError('`data["XAxis"]` is not a group')
 
         data_x_axis_0 = data_x_axis["0"]
         if not isinstance(data_x_axis_0, h5py.Group):
-            raise ValueError('`data["XAxis"]["0"]` is not a group')
+            raise TypeError('`data["XAxis"]["0"]` is not a group')
 
         data_x_axis_1 = data_x_axis["1"]
         if not isinstance(data_x_axis_1, h5py.Group):
-            raise ValueError('`data["XAxis"]["1"]` is not a group')
+            raise TypeError('`data["XAxis"]["1"]` is not a group')
 
         data_y_axis = self._data["YAxis"]
         if not isinstance(data_y_axis, h5py.Group):
-            raise ValueError('`data["YAxis"]` is not a group')
+            raise TypeError('`data["YAxis"]` is not a group')
 
         data_y_axis_0 = data_y_axis["0"]
         if not isinstance(data_y_axis_0, h5py.Group):
-            raise ValueError('`data["YAxis"]["0"]` is not a group')
+            raise TypeError('`data["YAxis"]["0"]` is not a group')
 
         data_y_axis_1 = data_y_axis["1"]
         if not isinstance(data_y_axis_1, h5py.Group):
-            raise ValueError('`data["YAxis"]["1"]` is not a group')
+            raise TypeError('`data["YAxis"]["1"]` is not a group')
 
         data_dynamic_properties = self._data["DynamicProperties"]
         if not isinstance(data_dynamic_properties, h5py.Group):
-            raise ValueError('`data["DynamicProperties"]` is not a group')
+            raise TypeError('`data["DynamicProperties"]` is not a group')
 
         x_axis_0 = cinfo.CameraAxis0(Name=data_x_axis_0.attrs["Name"])
         x_axis_1 = cinfo.CameraAxis1(
@@ -232,7 +236,7 @@ class OpticsInfo:
         """Objective label. (`file["Cube"]["Info"]["Optics"].Objective`)
 
         Raises:
-            ValueError: Data is invalid.
+            TypeError: Data is invalid.
 
         Returns:
             str: Objective label.
@@ -240,7 +244,7 @@ class OpticsInfo:
         KEY = "Objective"
         data = self._data.attrs[KEY]
         if not isinstance(data, np.ndarray):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an ndarray.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an ndarray.")
 
         return data[0]
 
@@ -258,7 +262,7 @@ class OpticsInfo:
 
     def _validate(self):
         """Validate data has the correct shape."""
-        self.objective
+        self.objective  # noqa: B018
 
     def to_abstract(self) -> cinfo.Optics:
         return cinfo.Optics(
@@ -273,11 +277,11 @@ class Info:
     def __init__(self, data: h5py.Group) -> None:
         camera = data["Camera"]
         if not isinstance(camera, h5py.Group):
-            raise ValueError("Invalid dataset. 'Camera' is not an h5 group.")
+            raise TypeError("Invalid dataset. 'Camera' is not an h5 group.")
 
         optics = data["Optics"]
         if not isinstance(optics, h5py.Group):
-            raise ValueError("Invalid dataset. 'Optics' is not an h5 group.")
+            raise TypeError("Invalid dataset. 'Optics' is not an h5 group.")
 
         self._data = data
         self._camera = CameraInfo(camera)
@@ -299,7 +303,7 @@ def info_grating_to_abstract(info_grating: h5py.Group) -> cinfo.Grating:
     gratings = {}
     for key, ginfo in info_grating.items():
         if not isinstance(ginfo, h5py.Group):
-            raise ValueError(f'`data["Info"]["Grating"]["{key}"]` is not a group.')
+            raise TypeError(f'`data["Info"]["Grating"]["{key}"]` is not a group.')
 
         children = ginfo.keys()
         if len(children) == 0:
@@ -314,12 +318,12 @@ def info_grating_to_abstract(info_grating: h5py.Group) -> cinfo.Grating:
         elif "Calibration" in children and "Registration" in children:
             calinfo = ginfo["Calibration"]
             if not isinstance(calinfo, h5py.Group):
-                raise ValueError(
+                raise TypeError(
                     f'`data["Info"]["Grating"]["{key}"]["Calibration"]` is not a group.'
                 )
 
             if not isinstance(ginfo["Registration"], h5py.Group):
-                raise ValueError(
+                raise TypeError(
                     f'`data["Info"]["Grating"]["{key}"]["Registration"]` is not a group.'
                 )
 
@@ -339,7 +343,7 @@ def info_grating_to_abstract(info_grating: h5py.Group) -> cinfo.Grating:
             registrations = {}
             for rkey, reginfo in ginfo["Registration"].items():
                 if not isinstance(reginfo, h5py.Group):
-                    raise ValueError(
+                    raise TypeError(
                         f'`data["Info"]["Grating"]["{key}"]["Registration"]["{rkey}"]` is not a group.'
                     )
 
@@ -376,11 +380,11 @@ class Datacube:
         file = h5py.File(path)
         root = file["Cube"]
         if not isinstance(root, h5py.Group):
-            raise ValueError("Invalid dataset. 'Cube' is not an h5 group.")
+            raise TypeError("Invalid dataset. 'Cube' is not an h5 group.")
 
         info = root["Info"]
         if not isinstance(info, h5py.Group):
-            raise ValueError("Invalid dataset. 'Info' is not an h5 group.")
+            raise TypeError("Invalid dataset. 'Info' is not an h5 group.")
 
         self._file = file
         self._info = Info(info)
@@ -389,12 +393,15 @@ class Datacube:
     def __getitem__(self, name):
         return self._file[name]
 
+    def __setitem__(self, name, value):
+        self._file[name] = value
+
     @property
     def root(self) -> h5py.Group:
         """Data root. (`file["Cube"]`)
 
         Raises:
-            ValueError: Data is invalid.
+            TypeError: Data is invalid.
 
         Returns:
             h5py.Group: Data root.
@@ -402,7 +409,7 @@ class Datacube:
         KEY = "Cube"
         data = self._file[KEY]
         if not isinstance(data, h5py.Group):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 group.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an h5 group.")
 
         return data
 
@@ -411,7 +418,7 @@ class Datacube:
         """Data. (`file["Cube"]["Images"]`)
 
         Raises:
-            ValueError: Invalid data.
+            TypeError: Invalid data.
 
         Returns:
             h5py.Dataset: Data.
@@ -419,7 +426,7 @@ class Datacube:
         KEY = "Images"
         data = self.root[KEY]
         if not isinstance(data, h5py.Dataset):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
 
         return data
 
@@ -437,7 +444,7 @@ class Datacube:
         """Exposure times. (`file["Cube"]["TimeExposure"]`)
 
         Raises:
-            ValueError: Data is invalid.
+            TypeError: Data is invalid.
 
         Returns:
             np.ndarray: Exposure time of each frame in seconds.
@@ -445,7 +452,7 @@ class Datacube:
         KEY = "TimeExposure"
         data = self.root[KEY]
         if not isinstance(data, h5py.Dataset):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
 
         return data
 
@@ -520,11 +527,11 @@ class Datacube:
         """Validate dataset has correct shape.
 
         Raises:
-            ValueError: Data is invalid.
+            TypeError: Data is invalid.
         """
-        self.root
-        self.data
-        self.exposure_times
+        self.root  # noqa: B018
+        self.data  # noqa: B018
+        self.exposure_times  # noqa: B018
 
 
 class SpectralCube(Datacube):
@@ -538,7 +545,7 @@ class SpectralCube(Datacube):
         """Wavelength of each frame. (`file["Cube"]["Wavelength"]`)
 
         Raises:
-            ValueError: Invalid data.
+            TypeError: Invalid data.
 
         Returns:
             h5py.Dataset: Frame wavelengths.
@@ -546,7 +553,7 @@ class SpectralCube(Datacube):
         KEY = "Wavelength"
         data = self.root[KEY]
         if not isinstance(data, h5py.Dataset):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
 
         return data
 
@@ -555,7 +562,7 @@ class SpectralCube(Datacube):
         """Grating id of each frame. (`file["Cube"]["GratingID"]`)
 
         Raises:
-            ValueError: Invalid data.
+            TypeError: Invalid data.
 
         Returns:
             h5py.Dataset: Frame grating id.
@@ -563,7 +570,7 @@ class SpectralCube(Datacube):
         KEY = "GratingID"
         data = self.root[KEY]
         if not isinstance(data, h5py.Dataset):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
 
         return data
 
@@ -572,7 +579,7 @@ class SpectralCube(Datacube):
         """X translation of each frame. (`file["Cube"]["Translation_X"]`)
 
         Raises:
-            ValueError: Invalid data.
+            TypeError: Invalid data.
 
         Returns:
             h5py.Dataset: Frame x translation.
@@ -580,7 +587,7 @@ class SpectralCube(Datacube):
         KEY = "Translation_X"
         data = self.root[KEY]
         if not isinstance(data, h5py.Dataset):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
 
         return data
 
@@ -589,7 +596,7 @@ class SpectralCube(Datacube):
         """Y translation of each frame. (`file["Cube"]["Translation_Y"]`)
 
         Raises:
-            ValueError: Invalid data.
+            TypeError: Invalid data.
 
         Returns:
             h5py.Dataset: Frame y translation.
@@ -597,7 +604,7 @@ class SpectralCube(Datacube):
         KEY = "Translation_Y"
         data = self.root[KEY]
         if not isinstance(data, h5py.Dataset):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
 
         return data
 
@@ -605,55 +612,55 @@ class SpectralCube(Datacube):
         """Validate dataset has correct shape.
 
         Raises:
-            ValueError: Data is invalid.
+            TypeError: Data is invalid.
         """
-        self.wavelengths
-        self.grating_ids
+        self.wavelengths  # noqa: B018
+        self.grating_ids  # noqa: B018
 
     def to_abstract(self) -> spectralcube.SpectralCube:
         grating_id = self.root["GratingID"]
         if not isinstance(grating_id, h5py.Dataset):
-            raise ValueError('`data["GratingID"]` is not a dataset.')
+            raise TypeError('`data["GratingID"]` is not a dataset.')
 
         images = self.root["Images"]
         if not isinstance(images, h5py.Dataset):
-            raise ValueError('`data["Images"]` is not a dataset.')
+            raise TypeError('`data["Images"]` is not a dataset.')
 
         time_exposure = self.root["TimeExposure"]
         if not isinstance(time_exposure, h5py.Dataset):
-            raise ValueError('`data["TimeExposure"]` is not a dataset.')
+            raise TypeError('`data["TimeExposure"]` is not a dataset.')
 
         translation_x = self.root["Translation_X"]
         if not isinstance(translation_x, h5py.Dataset):
-            raise ValueError('`data["Translation_X"]` is not a dataset.')
+            raise TypeError('`data["Translation_X"]` is not a dataset.')
 
         translation_y = self.root["Translation_Y"]
         if not isinstance(translation_y, h5py.Dataset):
-            raise ValueError('`data["Translation_Y"]` is not a dataset.')
+            raise TypeError('`data["Translation_Y"]` is not a dataset.')
 
         wavelength = self.root["Wavelength"]
         if not isinstance(wavelength, h5py.Dataset):
-            raise ValueError('`data["Wavelength"]` is not a dataset.')
+            raise TypeError('`data["Wavelength"]` is not a dataset.')
 
         info_cube = self.info["Cube"]
         if not isinstance(info_cube, h5py.Group):
-            raise ValueError('`data["Info"]["Cube"]` is not a group.')
+            raise TypeError('`data["Info"]["Cube"]` is not a group.')
 
         info_grating = self.info["Grating"]
         if not isinstance(info_grating, h5py.Group):
-            raise ValueError('`data["Info"]["Grating"]` is not a group.')
+            raise TypeError('`data["Info"]["Grating"]` is not a group.')
 
         info_misc = self.info["Misc"]
         if not isinstance(info_misc, h5py.Group):
-            raise ValueError('`data["Info"]["Misc"]` is not a group.')
+            raise TypeError('`data["Info"]["Misc"]` is not a group.')
 
         info_misc_zstage = info_misc["Z-Stage"]
         if not isinstance(info_misc_zstage, h5py.Group):
-            raise ValueError('`data["Info"]["Misc"]["Z-Stage"]` is not a group.')
+            raise TypeError('`data["Info"]["Misc"]["Z-Stage"]` is not a group.')
 
         info_system = self.info["System"]
         if not isinstance(info_system, h5py.Group):
-            raise ValueError('`data["Info"]["System"]` is not a group.')
+            raise TypeError('`data["Info"]["System"]` is not a group.')
 
         cube = spectralcube.Cube(
             AcqMode=info_cube.attrs["AcqMode"],
@@ -713,14 +720,14 @@ class TemporalCube(Datacube):
         KEY = "Timestamp"
         data = self.root[KEY]
         if not isinstance(data, h5py.Dataset):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
 
         return [
             dt.datetime.strptime(time.decode(), "%Y/%m/%d %H:%M:%S.%f") for time in data
         ]
 
     @property
-    def wavelengths(self) -> Optional[h5py.Dataset]:
+    def wavelengths(self) -> h5py.Dataset | None:
         """Wavelength of each frame. (`file["Cube"]["Wavelength"]`)
         Only available if cube was taken while in band pass mode.
 
@@ -733,16 +740,16 @@ class TemporalCube(Datacube):
 
         data = self.root[KEY]
         if not isinstance(data, h5py.Dataset):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
 
         return data
 
     @property
-    def grating_ids(self) -> Optional[h5py.Dataset]:
+    def grating_ids(self) -> h5py.Dataset | None:
         """Grating id of each frame. (`file["Cube"]["GratingID"]`)
 
         Raises:
-            ValueError: Invalid data.
+            TypeError: Invalid data.
 
         Returns:
             Optional[h5py.Dataset]: Frame grating id, if available.
@@ -753,7 +760,7 @@ class TemporalCube(Datacube):
 
         data = self.root[KEY]
         if not isinstance(data, h5py.Dataset):
-            raise ValueError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
+            raise TypeError(f"Invalid dataset. '{KEY}' is not an h5 dataset.")
 
         return data
 
@@ -771,54 +778,54 @@ class TemporalCube(Datacube):
         """Validate dataset has correct shape.
 
         Raises:
-            ValueError: Data is invalid.
+            TypeError: Data is invalid.
         """
-        self.timestamps
+        self.timestamps  # noqa: B018
 
     def to_abstract(self) -> temporalcube.TemporalCube:
         angle = self.root["Angle"]
         if not isinstance(angle, h5py.Dataset):
-            raise ValueError('`data["Angle"] is not a dataset.')
+            raise TypeError('`data["Angle"] is not a dataset.')
 
         images = self.root["Images"]
         if not isinstance(images, h5py.Dataset):
-            raise ValueError('`data["Images"] is not a dataset.')
+            raise TypeError('`data["Images"] is not a dataset.')
 
         time_exposure = self.root["TimeExposure"]
         if not isinstance(time_exposure, h5py.Dataset):
-            raise ValueError('`data["TimeExposure"] is not a dataset.')
+            raise TypeError('`data["TimeExposure"] is not a dataset.')
 
         timestamp = self.root["Timestamp"]
         if not isinstance(timestamp, h5py.Dataset):
-            raise ValueError('`data["Timestamp"] is not a dataset.')
+            raise TypeError('`data["Timestamp"] is not a dataset.')
 
         info_cube = self.info["Cube"]
         if not isinstance(info_cube, h5py.Group):
-            raise ValueError('`data["Info"]["Cube"]` is not a group.')
+            raise TypeError('`data["Info"]["Cube"]` is not a group.')
 
         info_cube_zaxis = info_cube["ZAxis"]
         if not isinstance(info_cube_zaxis, h5py.Group):
-            raise ValueError('`data["Info"]["Cube"]["ZAxis"]` is not a group.')
+            raise TypeError('`data["Info"]["Cube"]["ZAxis"]` is not a group.')
 
         info_grating = self.info["Grating"]
         if not isinstance(info_grating, h5py.Group):
-            raise ValueError('`data["Info"]["Grating"]` is not a group.')
+            raise TypeError('`data["Info"]["Grating"]` is not a group.')
 
         info_misc = self.info["Misc"]
         if not isinstance(info_misc, h5py.Group):
-            raise ValueError('`data["Info"]["Misc"]` is not a group.')
+            raise TypeError('`data["Info"]["Misc"]` is not a group.')
 
         info_misc_zstage = info_misc["Z-Stage"]
         if not isinstance(info_misc_zstage, h5py.Group):
-            raise ValueError('`data["Info"]["Misc"]["Z-Stage"]` is not a group.')
+            raise TypeError('`data["Info"]["Misc"]["Z-Stage"]` is not a group.')
 
         info_misc_ill = info_misc["Illumination"]
         if not isinstance(info_misc_ill, h5py.Group):
-            raise ValueError('`data["Info"]["Misc"]["Illumination"]` is not a group.')
+            raise TypeError('`data["Info"]["Misc"]["Illumination"]` is not a group.')
 
         info_system = self.info["System"]
         if not isinstance(info_system, h5py.Group):
-            raise ValueError('`data["Info"]["System"]` is not a group.')
+            raise TypeError('`data["Info"]["System"]` is not a group.')
 
         cube_zaxis = temporalcube.CubeZaxis(Key=info_cube_zaxis.attrs["Key"])
         cube = temporalcube.Cube(
@@ -860,9 +867,9 @@ class TemporalCube(Datacube):
         )
 
         return temporalcube.TemporalCube(
-            Angle=angle,
+            Angle=angle[()],
             Images=images[()],
             Info=info,
             TimeExposure=time_exposure[()],
-            Timestamp=timestamp,
+            Timestamp=timestamp[()],
         )

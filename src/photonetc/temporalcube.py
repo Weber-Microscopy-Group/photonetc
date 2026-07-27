@@ -1,13 +1,14 @@
 """Temporally resolved data cube."""
 
-from typing import TYPE_CHECKING, Optional
-from dataclasses import dataclass, field
-import numpy as np
-import datetime as dt
-from .cube_info import Camera, Grating, Optics, System, MiscZStage
+from __future__ import annotations
 
-if TYPE_CHECKING:
-    import h5py
+import datetime as dt
+from dataclasses import dataclass, field
+
+import h5py
+import numpy as np
+
+from .cube_info import Camera, Grating, MiscZStage, Optics, System
 
 
 @dataclass
@@ -90,7 +91,7 @@ class TemporalCube:
     Info: Info
     TimeExposure: np.ndarray
     Timestamp: np.ndarray
-    Wavelength: Optional[np.ndarray] = None
+    Wavelength: np.ndarray | None = None
 
     def to_h5(self, name: str) -> h5py.File:
         f = h5py.File(name, mode="w")

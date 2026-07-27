@@ -1,10 +1,12 @@
 """Spectrally resolved data cube."""
 
-from dataclasses import dataclass, field
-import numpy as np
 import datetime as dt
+from dataclasses import dataclass, field
+
 import h5py
-from .cube_info import MiscZStage, System, Optics, Grating, Camera
+import numpy as np
+
+from .cube_info import Camera, Grating, MiscZStage, Optics, System
 
 
 @dataclass

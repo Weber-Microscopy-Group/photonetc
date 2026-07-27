@@ -1,12 +1,15 @@
-# # Plotting utilities
+"""Plotting utilities"""
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional, Literal
+
 import os
 import tempfile
+from typing import TYPE_CHECKING, Literal
+
+import imageio.v3 as imageio
 import numpy as np
 import plotly.graph_objects as go
-import imageio.v3 as imageio
+
 from . import SpectralCube
 
 if TYPE_CHECKING:
@@ -38,16 +41,16 @@ def animate_frames(
     )
 
     fig.update_layout(
-        margin=dict(l=50, r=0, t=0, b=150),
-        yaxis=dict(scaleanchor="x", scaleratio=1),
+        margin={"l": 50, "r": 0, "t": 0, "b": 150},
+        yaxis={"scaleanchor": "x", "scaleratio": 1},
         updatemenus=[
-            dict(
-                type="buttons",
-                buttons=[
-                    dict(
-                        label="Play",
-                        method="animate",
-                        args=[
+            {
+                "type": "buttons",
+                "buttons": [
+                    {
+                        "label": "Play",
+                        "method": "animate",
+                        "args": [
                             None,
                             {
                                 "frame": {
@@ -57,27 +60,27 @@ def animate_frames(
                                 "fromcurrent": True,
                             },
                         ],
-                    ),
-                    dict(
-                        label="Pause",
-                        method="animate",
-                        args=[
+                    },
+                    {
+                        "label": "Pause",
+                        "method": "animate",
+                        "args": [
                             [None],
                             {
                                 "frame": {"duration": 0},
                                 "mode": "immediate",
                             },
                         ],
-                    ),
+                    },
                 ],
-            )
+            }
         ],
         sliders=[
-            dict(
-                steps=[
-                    dict(
-                        method="animate",
-                        args=[
+            {
+                "steps": [
+                    {
+                        "method": "animate",
+                        "args": [
                             [str(idx)],
                             {
                                 "frame": {
@@ -87,12 +90,12 @@ def animate_frames(
                                 "mode": "immediate",
                             },
                         ],
-                        label=str(idx),
-                    )
+                        "label": str(idx),
+                    }
                     for idx in range(len(frames))
                 ],
-                currentvalue=dict(prefix="Frame "),
-            )
+                "currentvalue": {"prefix": "Frame "},
+            }
         ],
         **kwargs,
     )
@@ -150,7 +153,7 @@ def animate(
     scale: float = 1,
     colorscale: str = "Viridis",
     constant_cbar: bool | tuple[float, float] = True,
-    annotations: Optional[FRAME_ANNOTATION] = None,
+    annotations: FRAME_ANNOTATION | None = None,
 ) -> go.Figure:
     """Animate a Hypercube.
 
@@ -182,25 +185,23 @@ def animate(
         if not isinstance(cube, SpectralCube):
             raise TypeError("Datacube does not have wavelength")
 
-        annotations_text = [
-            "{:.0f} nm".format(wavelength) for wavelength in cube.wavelengths
-        ]
+        annotations_text = [f"{wavelength:.0f} nm" for wavelength in cube.wavelengths]
     elif annotations == "timestamp":
-        annotations_text = ["{:.2f} nm".format(t) for t in cube.elapsed]
+        annotations_text = [f"{t:.2f} nm" for t in cube.elapsed]
 
     annotations_frame = [None for _ in range(frame_cnt)]
     if annotations_text is not None:
         annotations_frame = [
             [
-                dict(
-                    text=text,
-                    xref="paper",
-                    yref="paper",
-                    x=0.02,
-                    y=0.05,
-                    showarrow=False,
-                    font=dict(size=16, color="white"),
-                )
+                {
+                    "text": text,
+                    "xref": "paper",
+                    "yref": "paper",
+                    "x": 0.02,
+                    "y": 0.05,
+                    "showarrow": False,
+                    "font": {"size": 16, "color": "white"},
+                }
             ]
             for text in annotations_text
         ]
@@ -208,11 +209,11 @@ def animate(
     rows, cols = data.shape[1:]
     width = rows * scale
     height = cols * scale
-    scene = dict(
-        xaxis_title="X",
-        yaxis_title="Y",
-        zaxis_title="Intensity",
-    )
+    scene = {
+        "xaxis_title": "X",
+        "yaxis_title": "Y",
+        "zaxis_title": "Intensity",
+    }
 
     frames = [
         go.Frame(
@@ -276,7 +277,7 @@ def to_gif(
     scale: float = 1,
     colorscale: str = "Viridis",
     constant_cbar: bool | tuple[float, float] = True,
-    annotations: Optional[FRAME_ANNOTATION] = None,
+    annotations: FRAME_ANNOTATION | None = None,
     progress: bool = False,
 ):
     """Save a cube as a gif.
@@ -306,25 +307,23 @@ def to_gif(
         if not isinstance(cube, SpectralCube):
             raise TypeError("Datacube does not have wavelength")
 
-        annotations_text = [
-            "{:.0f} nm".format(wavelength) for wavelength in cube.wavelengths
-        ]
+        annotations_text = [f"{wavelength:.0f} nm" for wavelength in cube.wavelengths]
     elif annotations == "timestamp":
-        annotations_text = ["{:.2f} nm".format(t) for t in cube.elapsed]
+        annotations_text = [f"{t:.2f} nm" for t in cube.elapsed]
 
     annotations_frame = [None for _ in range(frame_cnt)]
     if annotations_text is not None:
         annotations_frame = [
             [
-                dict(
-                    text=text,
-                    xref="paper",
-                    yref="paper",
-                    x=0.02,
-                    y=0.05,
-                    showarrow=False,
-                    font=dict(size=16, color="white"),
-                )
+                {
+                    "text": text,
+                    "xref": "paper",
+                    "yref": "paper",
+                    "x": 0.02,
+                    "y": 0.05,
+                    "showarrow": False,
+                    "font": {"size": 16, "color": "white"},
+                }
             ]
             for text in annotations_text
         ]
@@ -332,11 +331,11 @@ def to_gif(
     rows, cols = data.shape[1:]
     width = rows * scale
     height = cols * scale
-    scene = dict(
-        xaxis_title="X",
-        yaxis_title="Y",
-        zaxis_title="Intensity",
-    )
+    scene = {
+        "xaxis_title": "X",
+        "yaxis_title": "Y",
+        "zaxis_title": "Intensity",
+    }
 
     frames = [
         go.Figure(
@@ -345,7 +344,7 @@ def to_gif(
                 annotations=annotations_frame[idx],
                 width=width,
                 height=height,
-                yaxis=dict(scaleanchor="x", scaleratio=1),
+                yaxis={"scaleanchor": "x", "scaleratio": 1},
                 scene=scene,
             ),
         )

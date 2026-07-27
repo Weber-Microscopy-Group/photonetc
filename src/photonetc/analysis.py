@@ -1,12 +1,11 @@
-# # Data analysis
+"""Data analysis"""
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional, Callable
+
+from typing import Callable
+
 import numpy as np
 from scipy.optimize import curve_fit
-
-if TYPE_CHECKING:
-    from .datacube import Datacube
 
 
 def fit_frames(

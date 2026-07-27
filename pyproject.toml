@@ -22,9 +22,12 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = ["h5py", "numpy", "plotly", "imageio"]
+dependencies = ["h5py", "numpy", "plotly", "imageio", "scipy"]
 
 optional-dependencies = { "test" = ["pytest"] }
+
+[project.scripts]
+photonetc-convert-temporal-to-spectral = "scripts.temporal_to_spectral:main"
 
 [project.urls]
 Documentation = "https://github.com/Weber-Microscopy-Group/photonetc#readme"
@@ -33,6 +36,9 @@ Source = "https://github.com/Weber-Microscopy-Group/photonetc"
 
 [tool.hatch.version]
 path = "src/photonetc/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/photonetc", "src/photonetc_scripts"]
 
 [tool.hatch.envs.types]
 extra-dependencies = ["mypy>=1.0.0"]
