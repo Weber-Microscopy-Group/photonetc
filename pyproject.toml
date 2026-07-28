@@ -27,7 +27,7 @@ dependencies = ["h5py", "numpy", "plotly", "imageio", "scipy"]
 optional-dependencies = { "test" = ["pytest"] }
 
 [project.scripts]
-photonetc-convert-temporal-to-spectral = "scripts.temporal_to_spectral:main"
+photonetc-convert-temporal-to-spectral = "photonetc_scripts.temporal_to_spectral:main"
 
 [project.urls]
 Documentation = "https://github.com/Weber-Microscopy-Group/photonetc#readme"

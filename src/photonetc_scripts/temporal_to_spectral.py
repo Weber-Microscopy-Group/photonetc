@@ -14,25 +14,136 @@ import numpy as np
 from photonetc import SpectralCube, TemporalCube, spectralcube
 
 
-def validate_reference(
-    reference: SpectralCube, cubes: list[TemporalCube]
-) -> None | list[float]:
-    """Validates the reference cube contains required wavelengths for the cubes.
-    Assumes data cubes have already been validated.
+def validate_reference_settings(
+    reference: SpectralCube, cubes: list[TemporalCube], wavelength_threshold: float
+) -> None | list[tuple[int, float]]:
+    """Validates the reference cube wavelengths-grating settings match those of the cubes,
+    and that each setting pair only exists once.
+
+    Saftey:
+        Assumes data cubes have already been validated.
 
     Args:
         reference (SpectralCube): Reference cube.
         cubes (list[TemporalCube]): Data cubes. Each cube should only represent one wavelength.
+        wavelength_threshold (float): Threshold in nm for wavelengths that are considered the same.
 
     Returns:
-        None | list[float]]: Missing reference wavelengths or `None` if all valid.
+        None | list[tuple[int, float]]: Missing reference grating-wavelengths pairs or `None` if all valid.
+
+    Raises:
+        ValueError: Reference cube has a duplicated setting.
     """
-    wavelengths_cubes = [cube.wavelengths[0] for cube in cubes]  # type: ignore
-    wavelength_ref = reference.wavelengths
+    cube_gratings = [int(cube.grating_ids[0]) for cube in cubes]  # type: ignore
+    cube_wavelengths = [float(cube.wavelengths[0]) for cube in cubes]  # type: ignore
+    ref_gratings = reference.grating_ids[()]
+    ref_wavelengths = reference.wavelengths[()]
+
     invalid = []
-    for wavelength in wavelengths_cubes:
-        if not np.isin(wavelength, wavelength_ref):
-            invalid.append(wavelength)
+    for grating, wavelength in zip(cube_gratings, cube_wavelengths):
+        diff_wavelength = np.abs(wavelength - ref_wavelengths)
+        valid_wavelength = diff_wavelength <= wavelength_threshold
+        valid_grating = ref_gratings == grating
+        valid = valid_wavelength & valid_grating
+        valid_count = np.count_nonzero(valid)
+        if valid_count == 0:
+            invalid.append((int(grating), wavelength))
+        if valid_count > 1:
+            raise ValueError(
+                "Invalid reference cube; duplicated grating-wavelength setting"
+            )
+
+    if len(invalid) == 0:
+        return None
+    else:
+        return invalid
+
+
+def validate_cube_settings_duplication(
+    cubes: list[TemporalCube], wavelength_threshold: float
+) -> None | list[list[int]]:
+    """Validates data cube wavelengths-grating settings are not duplicated.
+
+    Saftey:
+        Assumes data cubes have already been validated.
+
+    Args:
+        reference (SpectralCube): Reference cube.
+        cubes (list[TemporalCube]): Data cubes. Each cube should only represent one wavelength.
+        wavelength_threshold (float): Threshold in nm for wavelengths that are considered the same.
+
+    Returns:
+        None | list[list[int]]: Groups of duplicated cube settings, or None if all valid.
+
+    Notes:
+        + It may be that wavelength groups are split up. e.g. For threshold 1,
+        it could be that wavelengths [1, 2, 3] are split into two groups.
+        This occurs if 1 is keyed first. Then 2 will be included in the group, but 3 will not.
+    """
+    gratings = [int(cube.grating_ids[0]) for cube in cubes]  # type: ignore
+    wavelengths = [float(cube.wavelengths[0]) for cube in cubes]  # type: ignore
+
+    settings = {}
+    for idx in range(len(gratings)):
+        grating = gratings[idx]
+        wavelength = wavelengths[idx]
+        key = (grating, wavelength)
+        match = False
+        for key_grating, key_wavelength in settings:
+            if (
+                key_grating == grating
+                and abs(wavelength - key_wavelength) <= wavelength_threshold
+            ):
+                settings[key].append(idx)
+                match = True
+        if not match:
+            settings[key] = [idx]
+
+    invalid = [idx for idx in settings.values() if len(idx) > 1]
+    if len(invalid) == 0:
+        return None
+    else:
+        return invalid
+
+
+def validate_cube_settings(
+    reference: SpectralCube, cubes: list[TemporalCube], wavelength_threshold: float
+) -> None | list[tuple[int, float]]:
+    """Validates the data cubes cover the expected wavelengths-grating settings of the reference cube,
+    and that each setting pair only exists once.
+
+    Saftey:
+        Assumes data cubes have already been validated.
+
+    Args:
+        reference (SpectralCube): Reference cube.
+        cubes (list[TemporalCube]): Data cubes. Each cube should only represent one wavelength.
+        wavelength_threshold (float): Threshold in nm for wavelengths that are considered the same.
+
+    Returns:
+        None | list[]: Missing reference grating-wavelengths pairs or `None` if all valid.
+
+    Raises:
+        ValueError: Reference cube has a duplicated setting.
+    """
+    cube_gratings = np.array([int(cube.grating_ids[0]) for cube in cubes])  # type: ignore
+    cube_wavelengths = np.array([float(cube.wavelengths[0]) for cube in cubes])  # type: ignore
+    ref_gratings = reference.grating_ids
+    ref_wavelengths = reference.wavelengths
+
+    invalid = []
+    for grating, wavelength in zip(ref_gratings, ref_wavelengths):
+        diff_wavelength = np.abs(wavelength - cube_wavelengths)
+        valid_wavelength = diff_wavelength <= wavelength_threshold
+        valid_grating = cube_gratings == grating
+        valid = valid_wavelength & valid_grating
+        valid_count = np.count_nonzero(valid)
+        if valid_count == 0:
+            invalid.append((grating, wavelength))
+        if valid_count > 1:
+            raise ValueError(
+                "Invalid data cubes; duplicated grating-wavelength setting"
+            )
 
     if len(invalid) == 0:
         return None
@@ -124,7 +235,9 @@ def validate_wavelengths(cubes: list[TemporalCube]) -> None | list[int]:
             invalid.append(idx)
             continue
 
-        if np.ptp(wavelengths[()]) != 0:
+        wavelength_min = np.min(wavelengths)
+        wavelength_max = np.max(wavelengths)
+        if wavelength_min != wavelength_max:
             invalid.append(idx)
 
     if len(invalid) == 0:
@@ -149,7 +262,9 @@ def validate_gratings(cubes: list[TemporalCube]) -> None | list[int]:
             invalid.append(idx)
             continue
 
-        if np.ptp(gratings[()]) != 0:
+        grating_min = np.min(gratings)
+        grating_max = np.max(gratings)
+        if grating_min != grating_max:
             invalid.append(idx)
 
     if len(invalid) == 0:
@@ -159,7 +274,10 @@ def validate_gratings(cubes: list[TemporalCube]) -> None | list[int]:
 
 
 def temporal_to_spectral(
-    reference: SpectralCube, temporal: list[TemporalCube], prefix: str
+    reference: SpectralCube,
+    temporal: list[TemporalCube],
+    prefix: str,
+    wavelength_threshold: float,
 ) -> tuple[list[spectralcube.SpectralCube], np.ndarray]:
     """Convert a list of temporal cubes to a list of stpectral cubes.
 
@@ -167,6 +285,7 @@ def temporal_to_spectral(
         reference (SpectralCube): Referernce spectral cube.
         temporal (list[TemporalCube]): Temporal cubes to convert.
         prefix (str): Name prefix.
+        wavelength_threshold (float): Theshold in nm for which wavelengths are considered the same.
 
     Returns:
         tuple[list[spectralcube.SpectralCube], np.ndarray]: tuple of `(spectral cubes, times)`
@@ -180,9 +299,16 @@ def temporal_to_spectral(
     wavelengths_ref = reference.wavelengths
     translation_x_ref = reference["Translation_X"]
     translation_y_ref = reference["Translation_Y"]
-    w_idx = np.where(np.isin(wavelengths_ref, wavelengths))[0]
-    translation_x = translation_x_ref[w_idx]  # type: ignore
-    translation_y = translation_y_ref[w_idx]  # type: ignore
+
+    wavelength_diff = wavelengths.reshape(-1, 1) - wavelengths_ref
+    wavelength_diff = np.abs(wavelength_diff)
+    w_udx, w_vdx = np.asarray(wavelength_diff <= wavelength_threshold).nonzero()
+    w_idx = np.empty_like(wavelengths)
+    for udx, vdx in zip(w_udx, w_vdx):
+        w_idx[udx] = [vdx]
+
+    translation_x = translation_x_ref[w_idx]
+    translation_y = translation_y_ref[w_idx]
 
     data = [t.data for t in temporal]
     hypercube = np.stack(data)
@@ -215,8 +341,8 @@ def temporal_to_spectral(
             Images=images,
             Info=info,
             TimeExposure=times,
-            Translation_X=translation_x,  # type: ignore
-            Translation_Y=translation_y,  # type: ignore
+            Translation_X=translation_x,
+            Translation_Y=translation_y,
             Wavelength=wavelengths,
         )
 
@@ -242,7 +368,13 @@ def save_cubes(cubes: list[spectralcube.SpectralCube], times: np.ndarray, prefix
         f.close()
 
 
-def run(reference: str, input: list[str], output: str, time_threshold: float):
+def run(
+    reference: str,
+    input: list[str],
+    output: str,
+    time_threshold: float,
+    wavelength_threshold: float,
+):
     try:
         ref_cube = SpectralCube(reference)
     except ValueError as err:
@@ -276,10 +408,25 @@ def run(reference: str, input: list[str], output: str, time_threshold: float):
         invalid_paths = [input[idx] for idx in invalid]
         raise RuntimeError(f"Invalid data shapes: {invalid_paths}")
 
-    invalid = validate_reference(ref_cube, temporal)
+    invalid = validate_cube_settings_duplication(temporal, wavelength_threshold)
     if invalid is not None:
+        invalid_paths = [[input[jdx] for jdx in idx] for idx in invalid]
         raise RuntimeError(
-            f"Reference cube does not cover required wavelengths; missing {invalid}"
+            f"Data cubes with duplicate grating-wavelength settings found: {invalid_paths}"
+        )
+
+    invalid = validate_reference_settings(ref_cube, temporal, wavelength_threshold)
+    if invalid is not None:
+        invalid = np.sort(invalid, axis=0)
+        raise RuntimeError(
+            f"Reference cube does not cover required grating-wavelength settings; missing {invalid}"
+        )
+
+    invalid = validate_cube_settings(ref_cube, temporal, wavelength_threshold)
+    if invalid is not None:
+        invalid = np.sort(invalid, axis=0)
+        raise RuntimeError(
+            f"Data cubes do not cover expected grating-wavelength settings; missing {invalid}"
         )
 
     if not isinstance(ref_cube["Translation_X"], h5py.Dataset):
@@ -288,7 +435,9 @@ def run(reference: str, input: list[str], output: str, time_threshold: float):
     if not isinstance(ref_cube["Translation_Y"], h5py.Dataset):
         raise ValueError("Reference data 'Translation_X' is invalid")  # noqa: TRY004
 
-    cubes, times = temporal_to_spectral(ref_cube, temporal, output)
+    cubes, times = temporal_to_spectral(
+        ref_cube, temporal, output, wavelength_threshold
+    )
     save_cubes(cubes, times, output)
 
 
@@ -303,21 +452,36 @@ def main():
     parser.add_argument("output", type=str, help="prefix of output filenames.")
     parser.add_argument(
         "-t",
-        "--threshold",
+        "--time-threshold",
         type=float,
         default=1,
         help='Time threshold in ms. Frames must lie within this threshold to be considered "at the same time".',
+    )
+    parser.add_argument(
+        "-w",
+        "--wavelength-threshold",
+        type=float,
+        default=0.01,
+        help="Wavelength threshold in nm. Reference cube wavelengths and temporal cube wavelengths must be within this value to be considered the same.",
     )
     args = parser.parse_args()
 
     input = glob(args.input)
     if len(input) == 0:
         raise RuntimeError("Input pattern does not match any files")
-    if args.threshold < 0:
+    if args.time_threshold < 0:
         raise ValueError("Time threshold must be non-negative")
+    if args.wavelength_threshold < 0:
+        raise ValueError("Wavelength threshold must be non-negative")
 
     input = [p for p in input if p != args.reference]
-    run(args.reference, input, args.output, args.threshold)
+    run(
+        args.reference,
+        input,
+        args.output,
+        args.time_threshold,
+        args.wavelength_threshold,
+    )
 
 
 if __name__ == "__main__":

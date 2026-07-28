@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import itertools
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -462,8 +461,8 @@ class Datacube:
         Returns:
             np.ndarray: Elapsed time of each frame.
         """
-        data = self.exposure_times[()]
-        return np.array(itertools.accumulate(data))
+        data = self.exposure_times
+        return np.cumsum(data)
 
     @property
     def info(self) -> Info:
