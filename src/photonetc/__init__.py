@@ -2,3 +2,4 @@
 #
 # SPDX-License-Identifier: MIT
 from .datacube import SpectralCube, TemporalCube  # noqa: F401
+from . import plot, analysis

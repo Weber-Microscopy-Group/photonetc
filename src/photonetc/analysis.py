@@ -7,6 +7,8 @@ from typing import Callable
 import numpy as np
 from scipy.optimize import curve_fit
 
+from . import SpectralCube
+
 
 def fit_frames(
     data: np.ndarray,
@@ -125,3 +127,8 @@ def fit_pixels(
                 continue
 
     return fits
+
+
+def peakmap(cube: SpectralCube) -> np.ndarray:
+    pkmap = np.argmax(cube.data_array, axis=0)
+    return cube.wavelengths[()][pkmap]
