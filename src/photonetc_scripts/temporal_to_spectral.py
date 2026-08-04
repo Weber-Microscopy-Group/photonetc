@@ -307,8 +307,8 @@ def temporal_to_spectral(
     for udx, vdx in zip(w_udx, w_vdx):
         w_idx[udx] = [vdx]
 
-    translation_x = translation_x_ref[w_idx]
-    translation_y = translation_y_ref[w_idx]
+    translation_x = translation_x_ref[w_idx]  # type: ignore
+    translation_y = translation_y_ref[w_idx]  # type: ignore
 
     data = [t.data for t in temporal]
     hypercube = np.stack(data)
@@ -341,8 +341,8 @@ def temporal_to_spectral(
             Images=images,
             Info=info,
             TimeExposure=times,
-            Translation_X=translation_x,
-            Translation_Y=translation_y,
+            Translation_X=translation_x,  # type: ignore
+            Translation_Y=translation_y,  # type: ignore
             Wavelength=wavelengths,
         )
 

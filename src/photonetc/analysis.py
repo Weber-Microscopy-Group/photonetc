@@ -129,6 +129,7 @@ def fit_pixels(
     return fits
 
 
+# TODO: Should probably do a curve fit then pick the peak position.
 def peakmap(cube: SpectralCube) -> np.ndarray:
     pkmap = np.argmax(cube.data_array, axis=0)
     return cube.wavelengths[()][pkmap]

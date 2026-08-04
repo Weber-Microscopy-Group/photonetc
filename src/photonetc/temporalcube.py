@@ -9,6 +9,7 @@ import h5py
 import numpy as np
 
 from .cube_info import Camera, Grating, MiscZStage, Optics, System
+from .datacube import InfoCube
 
 
 @dataclass
@@ -17,16 +18,10 @@ class CubeZaxis:
 
 
 @dataclass
-class Cube:
-    AcqMode: str
+class Cube(InfoCube):
     BroadBand: np.ndarray
     LaserNm: np.ndarray
-    Name: str
-    Type: str
     ZAxis: CubeZaxis
-    CreationDate: str = field(
-        default_factory=lambda: dt.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-    )
 
     def to_h5(self, group: h5py.Group):
         group.attrs["AcqMode"] = self.AcqMode

@@ -1,5 +1,7 @@
 """Spectrally resolved data cube."""
 
+from __future__ import annotations
+
 import datetime as dt
 from dataclasses import dataclass, field
 
@@ -7,20 +9,14 @@ import h5py
 import numpy as np
 
 from .cube_info import Camera, Grating, MiscZStage, Optics, System
+from .datacube import InfoCube
 
 
 @dataclass
-class Cube:
-    AcqMode: str
+class Cube(InfoCube):
     LowerWavelength: np.ndarray
-    Name: str
-    Type: str
     UpperWavelength: np.ndarray
     WavelengthStep: np.ndarray = field(default_factory=lambda: np.ones((1,)))
-
-    CreationDate: str = field(
-        default_factory=lambda: dt.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-    )
     FixedTimeExposure: np.ndarray = field(default_factory=lambda: np.ones((1,)))
 
     def to_h5(self, group: h5py.Group):
@@ -76,6 +72,13 @@ class SpectralCube:
     Translation_X: np.ndarray
     Translation_Y: np.ndarray
     Wavelength: np.ndarray
+    file: h5py.File | None = None
+
+    @classmethod
+    def from_file(cls, path: str, mode: str = "r") -> "SpectralCube":
+        file = h5py.File(path, mode=mode)
+        root = file["Cube"]
+        cls.__init__(GratingId=root["GratingId"], Images=root["Images"], Info=info)
 
     def to_h5(self, name: str) -> h5py.File:
         f = h5py.File(name, mode="w")
