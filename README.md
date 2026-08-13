@@ -1,6 +1,6 @@
 # photonetc
 
-Tools to handle, analyze, and visualize photonetc data cubes.
+Tools to handle, analyze, and visualize photonetc datacubes.
 
 ## Installation
 
@@ -15,6 +15,10 @@ pip install git+https://github.com/Weber-Microscopy-Group/photonetc.git
 ```sh
 photonetc-convert-temporal-to-spectral
 ```
+
+## Examples
+
+Look in the [`tests`](/tests/) directory for usage.
 
 ## License
 

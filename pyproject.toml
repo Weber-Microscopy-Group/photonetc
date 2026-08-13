@@ -7,7 +7,7 @@ name = "photonetc"
 dynamic = ["version"]
 description = ''
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 license = "MIT"
 keywords = []
 authors = [{ name = "Brian Carlsen", email = "carlsen.bri@gmail.com" }]

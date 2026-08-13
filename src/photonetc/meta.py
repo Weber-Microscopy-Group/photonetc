@@ -1,130 +1,183 @@
-"""Helpers."""
-
-from __future__ import annotations
-
 import dataclasses as dc
-from inspect import Parameter, Signature
-from typing import (
-    Any,
-    Callable,
-    Generic,
-    TypeVar,
-    dataclass_transform,
-    overload,
-)
+from abc import ABC
+from types import UnionType
+from typing import Any, Union, get_args, get_origin
 
-__all__ = [
-    "attribute",
-    "attribute_list",
-]
+import h5py
+import numpy as np
+
+_ITEMS = "__group_items__"
+_STORE = "__items__"
+_REQUIRED = "__required_keys__"
+_OPTIONAL = "__optional_keys__"
 
 
-T = TypeVar("T")
-
-
-class Attribute(Generic[T]):
-    __slots__ = [
-        "default",
-        "default_factory",
-        "name",
-        "type",
-        "value",
-    ]
-
-    def __init__(self, name: str, default, default_factory):
-        if default is not dc.MISSING and default_factory is not dc.MISSING:
-            raise ValueError("cannot specify both default and default_factory")
-
-        self.name = name
-        self.default = default
-        self.default_factory = default_factory
-        self.type = dc.MISSING
-        self.value = dc.MISSING
-
-
-@overload
-def attribute(name: str, default: T) -> T: ...
-@overload
-def attribute(name: str, default_factory: Callable[[], T]) -> T: ...
-@overload
-def attribute(name: str) -> Any: ...
-
-
-def attribute(name: str, default=dc.MISSING, default_factory=dc.MISSING):  # type: ignore
-    if default is not dc.MISSING and default_factory is not dc.MISSING:
-        raise ValueError("cannot specify both default and default_factory")
-
-    return Attribute(name, default=default, default_factory=default_factory)
-
-
-@dataclass_transform(field_specifiers=(attribute,))
-def attribute_list(cls):
-    attrs = []
+def _process_group(cls: type, items_name: str):
+    items = None
     for name, typ in cls.__annotations__.items():
-        attrs.append((name, typ))
+        if name == items_name:
+            items = (name, typ)
+            break
 
-    init_params_req = []
-    init_params_opt = []
-    for name, typ in attrs:
-        attr: Attribute = getattr(cls, name)
-        attr.type = typ
-        if attr.default is dc.MISSING and attr.default_factory is dc.MISSING:
-            init_params_req.append(
-                Parameter(
-                    name,
-                    Parameter.POSITIONAL_OR_KEYWORD,
-                    annotation=typ,
-                )
-            )
-        elif attr.default is not dc.MISSING:
-            init_params_opt.append(
-                Parameter(
-                    name,
-                    Parameter.POSITIONAL_OR_KEYWORD,
-                    default=attr.default,
-                    annotation=typ,
-                )
-            )
-            attr.value = attr.default
-        elif attr.default_factory is not dc.MISSING:
-            init_params_opt.append(
-                Parameter(
-                    name,
-                    Parameter.POSITIONAL_OR_KEYWORD,
-                    default=attr.default_factory(),
-                    annotation=typ,
-                )
-            )
-            attr.value = attr.default_factory()
+    if items is not None:
+        required = []
+        optional = []
+        for name, typ in items[1].__annotations__.items():
+            if is_optional(typ):
+                optional.append(name)
+            else:
+                required.append(name)
+        required.sort()
+        optional.sort()
 
-        setattr(cls, f"_{name}", attr)
-        delattr(cls, name)
+        setattr(cls, _REQUIRED, required)
+        setattr(cls, _OPTIONAL, optional)
+        setattr(cls, _ITEMS, items)
+        orig_post_init = getattr(cls, "__post_init__", None)
 
-        def getter(self, name=name):
-            attr = getattr(self, f"_{name}")
-            return attr.value
+        def getitem(self, name: str):
+            return self.__items__[name]
 
-        def setter(self, value: Any, name=name):
-            attr = getattr(self, f"_{name}")
-            attr.value = value
+        def setitem(self, name: str, value: Any):
+            self.__items__[name] = value
 
-        setattr(cls, name, property(fget=getter, fset=setter))
+        def post_init(self):
+            if orig_post_init is not None:
+                orig_post_init(self)
 
-    params = (
-        [Parameter("self", Parameter.POSITIONAL_ONLY)]
-        + init_params_req
-        + init_params_opt
-    )
-    sig = Signature(params)
+            setattr(self, _STORE, getattr(self, items_name))
+            delattr(self, items_name)
 
-    def __init__(*args, **kwargs) -> None:
-        bound = sig.bind(*args, **kwargs)
-        self = bound.arguments.pop("self")
-        for name, value in bound.arguments.items():
-            attr = getattr(self, f"_{name}")
-            attr.value = value
+        cls.__getitem__ = getitem
+        cls.__setitem__ = setitem
+        cls.__post_init__ = post_init
 
-    __init__.__signature__ = sig  # type: ignore
-    cls.__init__ = __init__
-
+    cls = dc.dataclass(cls)
     return cls
+
+
+def group(cls=None, /, *, items_name="_items"):
+    """Creates a class whose attributes act as normal except if named as `item_names`.
+    Object in the `item_names` attribute are accessed as items
+    (i.e. Using dictionary notation `grp["item"]`).
+
+    Used to mimic an hdf5 group object where attriubtes are access via `.attrs`
+    and subgroups and datasets are accessed vis dictionary notation.
+
+    Items are merged when inherited.
+
+    Args:
+        items_name (str, optional): Name of items attribute. Defaults to "_items".
+
+    Returns:
+        type: Modified class.
+
+    Examples:
+        class ChildAttrs(TypedDict):
+            strval: str
+            intval: int
+
+        @dataclass
+        class Child:
+            attrs: ChildAttrs
+
+        class ParentAttrs(TypedDict):
+            strval: str
+            boolval: bool
+
+        class ParentItems(TypedDict):
+            child: Child
+
+        @group
+        class Parent:
+            attrs: ParentAttrs
+            _items: ParentItems
+
+        c = Child(attrs={"strval": "child", "intval": 0})
+        p = Parent(attrs={"strval": "parent", "boolval": True}, _items={"child": c})
+
+        assert p.attrs["strval"] == "parent"
+        assert p["child"].attrs["strval"] == "child"
+
+    Notes:
+        + Treats the in put class as a modified `dataclass` where the attribute
+        with name `item_names` is removed.
+    """
+
+    def wrap(cls):
+        return _process_group(cls, items_name)
+
+    if cls is None:
+        return wrap
+    else:
+        return wrap(cls)
+
+
+class Group(ABC):
+    @classmethod
+    def from_group(cls: type, group: h5py.Group, path: str = ""):
+        attrs = None
+        if "attrs" in cls.__annotations__:
+            cls_attrs = cls.__annotations__["attrs"].__annotations__
+            attrs = {}
+            missing = []
+            for key in cls_attrs:
+                if key not in group.attrs:
+                    missing.append(key)
+                    continue
+
+                attrs[key] = group.attrs[key]
+            if len(missing) > 0:
+                raise ValueError(f"missing group attributes {missing} for {path}")
+        cls_items = getattr(cls, _ITEMS, None)
+        items = None
+        if cls_items is not None:
+            missing = []
+            expected = cls_items[1].__annotations__
+            for key in expected:
+                if key not in group:
+                    missing.append(key)
+
+            if len(missing) > 0:
+                raise ValueError(f"missing groups {missing} from {cls.__name__}")
+
+            items = {}
+            for key, typ in expected.items():
+                cpath = path + f"/{key}"
+                child = group[key]
+                if isinstance(child, h5py.Group) and is_ndarray_annotation(typ):
+                    raise TypeError(f"expected dataset for {cpath}, but found group")
+                if isinstance(child, h5py.Dataset) and not is_ndarray_annotation(typ):
+                    raise TypeError(f"expected group for {cpath}, but found dataset")
+
+                items[key] = typ.from_group(child, cpath)
+
+        if attrs is not None and items is None:
+            return cls(attrs)
+        if attrs is None and items is not None:
+            return cls(items)
+        if attrs is not None and items is not None:
+            return cls(attrs, items)
+
+        raise ValueError(f"neither of attrs nor items present at {path}")
+
+
+def is_union(typ: type) -> bool:
+    return get_origin(typ) in (Union, UnionType)
+
+
+def is_optional(typ: type) -> bool:
+    if not is_union(typ):
+        return False
+
+    return type(None) in get_args(typ)
+
+
+def is_group(obj) -> bool:
+    return hasattr(obj, _ITEMS)
+
+
+def is_ndarray_annotation(annotation) -> bool:
+    return get_origin(annotation) is np.ndarray or (
+        isinstance(annotation, type) and issubclass(annotation, np.ndarray)
+    )
