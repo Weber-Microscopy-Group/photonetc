@@ -13,7 +13,7 @@ class CameraRoiMode(StrEnum):
     HARDWARE = "Hardware"
 
 CameraDynamicPropertiesAttrs = TypedDict(
-    "CameraDynamicPropertiesAttrs", {"ROI Mode": CameraRoiMode}
+    "CameraDynamicPropertiesAttrs", {"ROI Mode": Annotated[NDArrayStr, Literal[1]]}
 )
 
 @dataclass
@@ -21,7 +21,7 @@ class CameraDynamicProperties:
     attrs: CameraDynamicPropertiesAttrs
 
 class CameraAxis0Attrs(TypedDict):
-    Name: str
+    Name: Annotated[NDArrayStr, Literal[1]]
 
 @dataclass
 class CameraAxis0:
@@ -30,8 +30,8 @@ class CameraAxis0:
 class CameraAxis1Attrs(TypedDict):
     Coefs: Annotated[NDArrayF64, Literal[2]]
     Decimals: Annotated[NDArrayI32, Literal[1]]
-    Name: str
-    Unit: str
+    Name: Annotated[NDArrayStr, Literal[1]]
+    Unit: Annotated[NDArrayStr, Literal[1]]
 
 @dataclass
 class CameraAxis1:
@@ -40,8 +40,8 @@ class CameraAxis1:
 class CameraAxisAttrs(TypedDict):
     Coefs: Annotated[NDArrayF64, Literal[2]]
     Decimals: Annotated[NDArrayI32, Literal[1]]
-    Name: str
-    Unit: str
+    Name: Annotated[NDArrayStr, Literal[1]]
+    Unit: Annotated[NDArrayStr, Literal[1]]
 
 CameraAxisItems = TypedDict("CameraAxisItems", {"0": CameraAxis0, "1": CameraAxis1})
 
@@ -67,24 +67,24 @@ class CameraTrigger(StrEnum):
     NONE = "None"
 
 class CameraAttrs(TypedDict):
-    AveragingMode: CameraAveragingMode
+    AveragingMode: Annotated[NDArrayStr, Literal[1]]
     Binning: Annotated[NDArrayF64, Literal[2]]
     BitDepth: Annotated[NDArrayI32, Literal[1]]
     CaptorSize: Annotated[NDArrayI32, Literal[2]]
-    CoolerSetPoint: str
-    DetectorMode: CameraDetectorMode
+    CoolerSetPoint: Annotated[NDArrayStr, Literal[1]]
+    DetectorMode: Annotated[NDArrayStr, Literal[1]]
     GradientOrientation: Annotated[NDArrayI32, Literal[1]]
-    Model: str
-    Name: str
+    Model: Annotated[NDArrayStr, Literal[1]]
+    Name: Annotated[NDArrayStr, Literal[1]]
     Orientation: Annotated[NDArrayI32, Literal[1]]
     PixelSizeNm: Annotated[NDArrayF64, Literal[1]]
-    ReadoutSpeed: str
+    ReadoutSpeed: Annotated[NDArrayStr, Literal[1]]
     RoiSize: Annotated[NDArrayI32, Literal[2]]
     RoiStart: Annotated[NDArrayI32, Literal[2]]
-    Shutter: CameraShutter
-    SN: str
-    Temperature: str
-    Trigger: CameraTrigger
+    Shutter: Annotated[NDArrayStr, Literal[1]]
+    SN: Annotated[NDArrayStr, Literal[1]]
+    Temperature: Annotated[NDArrayStr, Literal[1]]
+    Trigger: Annotated[NDArrayStr, Literal[1]]
     VerticalFlip: Annotated[NDArrayI32, Literal[1]]
 
 class CameraItems(TypedDict):
@@ -115,7 +115,7 @@ class GratingSlotCalibrationAttrs(TypedDict):
     Slope: Annotated[NDArrayF64, Literal[1]]
     StageOffset: Annotated[NDArrayF64, Literal[1]]
     Temperature: Annotated[NDArrayF64, Literal[1]]
-    User: str
+    User: Annotated[NDArrayStr, Literal[1]]
 
 @dataclass
 class GratingSlotCalibration:
@@ -139,12 +139,12 @@ class GratingBeamSide(StrEnum):
     RIGHT = "Right"
 
 class GratingSlotAttrs(TypedDict):
-    BeamSide: str
+    BeamSide: Annotated[NDArrayStr, Literal[1]]
     FWHM: Annotated[NDArrayF64, Literal[1]]
     MaxWavelength: Annotated[NDArrayF64, Literal[1]]
     MinWavelength: Annotated[NDArrayF64, Literal[1]]
-    Name: str
-    Type: GratingType
+    Name: Annotated[NDArrayStr, Literal[1]]
+    Type: Annotated[NDArrayStr, Literal[1]]
 
 class GratingSlotItems(TypedDict):
     Calibration: GratingSlotCalibration
@@ -163,8 +163,8 @@ class GratingSlotEmptyAttrs(TypedDict):
     FWHM: Annotated[NDArrayF64, Literal[1]]
     MaxWavelength: Annotated[NDArrayF64, Literal[1]]
     MinWavelength: Annotated[NDArrayF64, Literal[1]]
-    Name: str
-    Type: str
+    Name: Annotated[NDArrayStr, Literal[1]]
+    Type: Annotated[NDArrayStr, Literal[1]]
 
 @dataclass
 class GratingSlotEmpty:
@@ -205,12 +205,10 @@ class Grating:
     def __getitem__(self, key: Literal["7"]) -> GratingSlot | GratingSlotEmpty: ...
     @overload
     def __getitem__(self, key: Literal["8"]) -> GratingSlot | GratingSlotEmpty: ...
-    @overload
-    def __getitem__(self, key: Literal["9"]) -> GratingSlot | GratingSlotEmpty: ...
 
 class OpticsAttrs(TypedDict):
     FocusStatus: Annotated[NDArrayI32, Literal[1]]
-    Objective: str
+    Objective: Annotated[NDArrayStr, Literal[1]]
 
 @dataclass
 class Optics:
@@ -220,9 +218,9 @@ class SystemType(StrEnum):
     SYSTEM = "System"
 
 class SystemAttrs(TypedDict):
-    SN: str
-    SoftwareVersion: str
-    Type: SystemType
+    SN: Annotated[NDArrayStr, Literal[1]]
+    SoftwareVersion: Annotated[NDArrayStr, Literal[1]]
+    Type: Annotated[NDArrayStr, Literal[1]]
 
 @dataclass
 class System:
@@ -240,9 +238,9 @@ class IlluminationState(StrEnum):
     DISABLED = "Disabled"
 
 class MiscIlluminationAttrs(TypedDict):
-    Intensity: NDArrayF64
-    Mode: NDArrayStr
-    Source: IlluminationState
+    Intensity: Annotated[NDArrayF64, Literal[1]]
+    Mode: Annotated[NDArrayStr, Literal[1]]
+    Source: Annotated[IlluminationState, Literal[1]]
 
 @dataclass
 class MiscIllumination:
@@ -251,7 +249,7 @@ class MiscIllumination:
 MiscItems = TypedDict(
     "MiscItems",
     {
-        "Illumination": MiscIllumination,
+        "Illumination": MiscIllumination | None,
         "Z-Stage": MiscZStage,
     },
 )
@@ -267,7 +265,7 @@ class CubeZAxisKey(StrEnum):
     INDEX = "Index"
 
 class CubeZAxisAttrs(TypedDict):
-    Key: NDArrayStr
+    Key: Annotated[NDArrayStr, Literal[1]]
 
 @dataclass
 class CubeZAxis:
@@ -284,16 +282,16 @@ class CubeDatatype(StrEnum):
     I16 = "INT-16"
 
 class CubeAttrs(TypedDict):
-    AcqMode: NDArrayStr
-    CreationDate: NDArrayStr
-    Name: NDArrayStr
-    Type: NDArrayStr
-    BroadBand: NDArrayI32 | None
-    FixedTimeExposure: NDArrayI32 | None
-    LaserNm: NDArrayF64 | None
-    LowerWavelength: NDArrayF64 | None
-    UpperWavelength: NDArrayF64 | None
-    WavelengthStep: NDArrayF64 | None
+    AcqMode: Annotated[NDArrayStr, Literal[1]]
+    CreationDate: Annotated[NDArrayStr, Literal[1]]
+    Name: Annotated[NDArrayStr, Literal[1]]
+    Type: Annotated[NDArrayStr, Literal[1]]
+    BroadBand: Annotated[NDArrayI32, Literal[1]] | None
+    FixedTimeExposure: Annotated[NDArrayI32, Literal[1]] | None
+    LaserNm: Annotated[NDArrayF64, Literal[1]] | None
+    LowerWavelength: Annotated[NDArrayF64, Literal[1]] | None
+    UpperWavelength: Annotated[NDArrayF64, Literal[1]] | None
+    WavelengthStep: Annotated[NDArrayF64, Literal[1]] | None
 
 class Cube:
     attrs: CubeAttrs
