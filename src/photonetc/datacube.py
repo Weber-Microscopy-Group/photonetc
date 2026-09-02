@@ -45,7 +45,7 @@ class Datacube(ABC):
 
         all = all[1].__annotations__
         keys_expected = list(all.keys())
-        keys_required = getattr(cls, meta._REQUIRED)
+        keys_required = getattr(cls, meta._REQUIRED_ITEMS)
         keys_present = list(filter(lambda key: key not in _IGNORE_NAMES, root.keys()))
         keys_expected.sort()
         keys_present.sort()

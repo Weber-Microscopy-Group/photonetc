@@ -8,8 +8,10 @@ import numpy as np
 
 _ITEMS = "__group_items__"
 _STORE = "__items__"
-_REQUIRED = "__required_keys__"
-_OPTIONAL = "__optional_keys__"
+_REQUIRED_ATTRS = "__required_attrs__"
+_OPTIONAL_ATTRS = "__optional_attrs__"
+_REQUIRED_ITEMS = "__required_items__"
+_OPTIONAL_ITEMS = "__optional_items__"
 
 
 def _process_group(cls: type, items_name: str):
@@ -30,8 +32,8 @@ def _process_group(cls: type, items_name: str):
         required.sort()
         optional.sort()
 
-        setattr(cls, _REQUIRED, required)
-        setattr(cls, _OPTIONAL, optional)
+        setattr(cls, _REQUIRED_ITEMS, required)
+        setattr(cls, _OPTIONAL_ITEMS, optional)
         setattr(cls, _ITEMS, items)
         orig_post_init = getattr(cls, "__post_init__", None)
 
@@ -121,12 +123,18 @@ class Group(ABC):
             cls_attrs = cls.__annotations__["attrs"].__annotations__
             attrs = {}
             missing = []
-            for key in cls_attrs:
-                if key not in group.attrs:
-                    missing.append(key)
-                    continue
+            for key, typ in cls_attrs.items():
+                try:
+                    val = group.attrs[key]
+                except KeyError:
+                    if is_optional:
+                        val = None
+                    else:
+                        missing.append(key)
+                        continue
 
-                attrs[key] = group.attrs[key]
+                attrs[key] = val
+
             if len(missing) > 0:
                 raise ValueError(f"missing group attributes {missing} for {path}")
         cls_items = getattr(cls, _ITEMS, None)
@@ -134,8 +142,8 @@ class Group(ABC):
         if cls_items is not None:
             missing = []
             expected = cls_items[1].__annotations__
-            for key in expected:
-                if key not in group:
+            for key, typ in expected.items():
+                if key not in group and not is_optional(typ):
                     missing.append(key)
 
             if len(missing) > 0:
@@ -144,13 +152,29 @@ class Group(ABC):
             items = {}
             for key, typ in expected.items():
                 cpath = path + f"/{key}"
-                child = group[key]
-                if isinstance(child, h5py.Group) and is_ndarray_annotation(typ):
+                try:
+                    child = group[key]
+                except KeyError:
+                    items[key] = None
+                    continue
+
+                ctyp = typ
+                if is_optional(typ):
+                    styps = get_args(typ)
+                    if len(styps) == 2:
+                        for styp in styps:
+                            if styp is type(None):
+                                continue
+                            ctyp = styp
+                    else:
+                        raise NotImplementedError(f"unhandled annotation type {typ}")
+
+                if isinstance(child, h5py.Group) and is_ndarray_annotation(ctyp):
                     raise TypeError(f"expected dataset for {cpath}, but found group")
-                if isinstance(child, h5py.Dataset) and not is_ndarray_annotation(typ):
+                if isinstance(child, h5py.Dataset) and not is_ndarray_annotation(ctyp):
                     raise TypeError(f"expected group for {cpath}, but found dataset")
 
-                items[key] = typ.from_group(child, cpath)
+                items[key] = ctyp.from_group(child, cpath)
 
         if attrs is not None and items is None:
             return cls(attrs)

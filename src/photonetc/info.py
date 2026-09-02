@@ -3,14 +3,15 @@
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Annotated, Literal, TypeAlias, TypedDict
-import h5py
 
+import h5py
 import numpy as np
 
-from .meta import group, Group
+from .meta import Group, group
 
 NDArrayF64: TypeAlias = np.typing.NDArray[np.float64]
 NDArrayI32: TypeAlias = np.typing.NDArray[np.int32]
+NDArrayStr: TypeAlias = np.typing.NDArray[np.str_]
 
 
 class CameraRoiMode(StrEnum):
@@ -264,15 +265,95 @@ class System(Group):
     attrs: SystemAttrs
 
 
-class MiscZStage(TypedDict):
+class MiscZStageAttrs(TypedDict):
     Position: Annotated[NDArrayF64, Literal[1]]
+
+
+@dataclass
+class MiscZStage(Group):
+    attrs: MiscZStageAttrs
+
+
+class IlluminationState(StrEnum):
+    ENABLED = "Enabled"
+    DISABLED = "Disabled"
+
+
+class MiscIlluminationAttrs(TypedDict):
+    Intensity: NDArrayF64
+    Mode: NDArrayStr
+    Source: IlluminationState
+
+
+@dataclass
+class MiscIllumination(Group):
+    attrs: MiscIlluminationAttrs
+
+
+MiscItems = TypedDict(
+    "MiscItems",
+    {
+        "Illumination": MiscIllumination | None,
+        "Z-Stage": MiscZStage,
+    },
+)
+
+
+@group
+class Misc(Group):
+    _items: MiscItems
+
+
+class CubeZAxisKey(StrEnum):
+    INDEX = "Index"
+
+
+class CubeZAxisAttrs(TypedDict):
+    Key: NDArrayStr
+
+
+@dataclass
+class CubeZAxis(Group):
+    attrs: CubeZAxisAttrs
+
+
+class CubeItems(TypedDict):
+    ZAxis: CubeZAxis | None
+
+
+class CubeAcqMode(StrEnum):
+    HYPERSPECTRAL = "Hyperspectral Acquisition"
+    VIDEO = "Video Record"
+
+
+class CubeDatatype(StrEnum):
+    I16 = "INT-16"
+
+
+class CubeAttrs(TypedDict):
+    AcqMode: NDArrayStr
+    CreationDate: NDArrayStr
+    Name: NDArrayStr
+    Type: NDArrayStr
+    BroadBand: NDArrayI32 | None
+    FixedTimeExposure: NDArrayI32 | None
+    LaserNm: NDArrayF64 | None
+    LowerWavelength: NDArrayF64 | None
+    UpperWavelength: NDArrayF64 | None
+    WavelengthStep: NDArrayF64 | None
+
+
+@group
+class Cube(Group):
+    attrs: CubeAttrs
+    _items: CubeItems
 
 
 class InfoItems(TypedDict):
     Camera: Camera
-    # Cube: Cube
+    Cube: Cube
     Grating: Grating
-    # Misc: Misc
+    Misc: Misc
     Optics: Optics
     System: System
 

@@ -6,6 +6,7 @@ import numpy as np
 
 NDArrayF64: TypeAlias = np.typing.NDArray[np.float64]
 NDArrayI32: TypeAlias = np.typing.NDArray[np.int32]
+NDArrayStr: TypeAlias = np.typing.NDArray[np.str_]
 
 class CameraRoiMode(StrEnum):
     SOFTWARE = "Software"
@@ -227,14 +228,84 @@ class SystemAttrs(TypedDict):
 class System:
     attrs: SystemAttrs
 
-class MiscZStage(TypedDict):
+class MiscZStageAttrs(TypedDict):
     Position: Annotated[NDArrayF64, Literal[1]]
+
+@dataclass
+class MiscZStage:
+    attrs: MiscZStageAttrs
+
+class IlluminationState(StrEnum):
+    ENABLED = "Enabled"
+    DISABLED = "Disabled"
+
+class MiscIlluminationAttrs(TypedDict):
+    Intensity: NDArrayF64
+    Mode: NDArrayStr
+    Source: IlluminationState
+
+@dataclass
+class MiscIllumination:
+    attrs: MiscIlluminationAttrs
+
+MiscItems = TypedDict(
+    "MiscItems",
+    {
+        "Illumination": MiscIllumination,
+        "Z-Stage": MiscZStage,
+    },
+)
+
+class Misc:
+    def __init__(self, _items: MiscItems): ...
+    @overload
+    def __getitem__(self, key: Literal["Illumination"]) -> MiscIllumination: ...
+    @overload
+    def __getitem__(self, key: Literal["Z-Stage"]) -> MiscZStage: ...
+
+class CubeZAxisKey(StrEnum):
+    INDEX = "Index"
+
+class CubeZAxisAttrs(TypedDict):
+    Key: NDArrayStr
+
+@dataclass
+class CubeZAxis:
+    attrs: CubeZAxisAttrs
+
+class CubeItems(TypedDict):
+    ZAxis: CubeZAxis | None
+
+class CubeAcqMode(StrEnum):
+    HYPERSPECTRAL = "Hyperspectral Acquisition"
+    VIDEO = "Video Record"
+
+class CubeDatatype(StrEnum):
+    I16 = "INT-16"
+
+class CubeAttrs(TypedDict):
+    AcqMode: NDArrayStr
+    CreationDate: NDArrayStr
+    Name: NDArrayStr
+    Type: NDArrayStr
+    BroadBand: NDArrayI32 | None
+    FixedTimeExposure: NDArrayI32 | None
+    LaserNm: NDArrayF64 | None
+    LowerWavelength: NDArrayF64 | None
+    UpperWavelength: NDArrayF64 | None
+    WavelengthStep: NDArrayF64 | None
+
+class Cube:
+    attrs: CubeAttrs
+
+    def __init__(self, attrs: CubeAttrs, _items: CubeItems): ...
+    def __getitem__(self, key: Literal["ZAxis"]) -> CubeZAxis: ...
 
 class InfoItems(TypedDict):
     Camera: Camera
-    # Cube: Cube
+    Cube: Cube
     Grating: Grating
-    # Misc: Misc
+    Misc: Misc
     Optics: Optics
     System: System
 
@@ -248,3 +319,7 @@ class Info:
     def __getitem__(self, key: Literal["Optics"]) -> Optics: ...
     @overload
     def __getitem__(self, key: Literal["System"]) -> System: ...
+    @overload
+    def __getitem__(self, key: Literal["Cube"]) -> Cube: ...
+    @overload
+    def __getitem__(self, key: Literal["Misc"]) -> Misc: ...

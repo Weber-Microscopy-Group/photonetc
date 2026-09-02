@@ -34,6 +34,21 @@ def test_temporalcube_bandpass_from_file():
     assert c["Wavelength"].shape[0] == FRAMES  # pyright: ignore[reportOptionalMemberAccess]
 
     assert c["Info"]["System"].attrs["Type"] == pe.info.SystemType.SYSTEM
+    assert c["Info"]["Misc"]["Z-Stage"].attrs["Position"] == np.array([110.75])
+    assert c["Info"]["Misc"]["Illumination"] is None
+    assert c["Info"]["Cube"]["ZAxis"].attrs["Key"] == np.array(
+        [pe.info.CubeZAxisKey.INDEX.value]
+    )
+    assert c["Info"]["Cube"].attrs["AcqMode"] == np.array(
+        [pe.info.CubeAcqMode.VIDEO.value]
+    )
+    assert c["Info"]["Cube"].attrs["BroadBand"] == np.array([0])
+    assert c["Info"]["Cube"].attrs["Type"] == np.array([pe.info.CubeDatatype.I16])
+    assert c["Info"]["Cube"].attrs["FixedTimeExposure"] is None
+    assert c["Info"]["Cube"].attrs["LaserNm"] is None
+    assert c["Info"]["Cube"].attrs["LowerWavelength"] is None
+    assert c["Info"]["Cube"].attrs["UpperWavelength"] is None
+    assert c["Info"]["Cube"].attrs["WavelengthStep"] is None
 
 
 def test_temporalcube_broadband_from_file():
@@ -51,6 +66,25 @@ def test_temporalcube_broadband_from_file():
     assert c["Wavelength"] is None
 
     assert c["Info"]["System"].attrs["Type"] == pe.info.SystemType.SYSTEM
+    assert c["Info"]["Misc"]["Z-Stage"].attrs["Position"] == np.array(
+        [-21.200000000000003]
+    )
+    assert c["Info"]["Misc"]["Illumination"].attrs["Source"] == np.array(
+        [pe.info.IlluminationState.DISABLED.value]
+    )
+    assert c["Info"]["Cube"]["ZAxis"].attrs["Key"] == np.array(
+        [pe.info.CubeZAxisKey.INDEX.value]
+    )
+    assert c["Info"]["Cube"].attrs["AcqMode"] == np.array(
+        [pe.info.CubeAcqMode.VIDEO.value]
+    )
+    assert c["Info"]["Cube"].attrs["BroadBand"] == np.array([1])
+    assert c["Info"]["Cube"].attrs["Type"] == np.array([pe.info.CubeDatatype.I16])
+    assert c["Info"]["Cube"].attrs["FixedTimeExposure"] is None
+    assert c["Info"]["Cube"].attrs["LaserNm"] == np.array([385.0])
+    assert c["Info"]["Cube"].attrs["LowerWavelength"] is None
+    assert c["Info"]["Cube"].attrs["UpperWavelength"] is None
+    assert c["Info"]["Cube"].attrs["WavelengthStep"] is None
 
 
 def test_spectralcube_from_file():
@@ -65,6 +99,14 @@ def test_spectralcube_from_file():
     assert c["Translation_Y"].shape[0] == FRAMES
     assert c["Wavelength"].shape[0] == FRAMES
     assert c["Info"]["System"].attrs["Type"] == pe.info.SystemType.SYSTEM
+    assert c["Info"]["Cube"]["ZAxis"] is None
+    assert c["Info"]["Cube"].attrs["AcqMode"] == np.array(
+        [pe.info.CubeAcqMode.HYPERSPECTRAL.value]
+    )
+    assert c["Info"]["Cube"].attrs["FixedTimeExposure"] == np.array([1])
+    assert c["Info"]["Cube"].attrs["LowerWavelength"] == np.array([750.0])
+    assert c["Info"]["Cube"].attrs["UpperWavelength"] == np.array([402.0])
+    assert c["Info"]["Cube"].attrs["WavelengthStep"] == np.array([4.0])
 
 
 def test_spectralcube():
