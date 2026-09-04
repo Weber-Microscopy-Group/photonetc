@@ -375,6 +375,23 @@ def run(
     time_threshold: float,
     wavelength_threshold: float,
 ):
+    """Transform a spectral set of temporal cubes into a temporal set of spectral cubes.
+
+    Args:
+        reference (str): Path to the reference cube. This should be a spectral cube covering the same wavelengths as the temporal cubes.
+        input (list[str]): Paths to the temporal cubes.
+        output (str): Path of the directory in which to save the output spectral cubes.
+        time_threshold (float): Threshold at which to consider cubes to have been taken at the same time, in ms.
+        wavelength_threshold (float): Threshold at which to consider wavelngths to be the name. in nm.
+
+    Raises:
+        RuntimeError: Reference or data cubes could not be openend.
+        RuntimeError: Wavelengths are invalid.
+        RuntimeError: Gratings, timestamps, or data shapes are invalid.
+        RuntimeError: Duplicate cubes are found.
+        RuntimeError: Reference and data cubes do not match.
+        ValueError: Time or wavelength threshold are invalid.
+    """
     try:
         ref_cube = SpectralCube(reference)
     except ValueError as err:
@@ -396,7 +413,7 @@ def run(
     invalid = validate_gratings(temporal)
     if invalid is not None:
         invalid_paths = [input[idx] for idx in invalid]
-        raise RuntimeError(f"Invalid graing: {invalid_paths}")
+        raise RuntimeError(f"Invalid grating: {invalid_paths}")
 
     invalid = validate_timestamps(temporal, time_threshold)
     if invalid is not None:
