@@ -1,7 +1,9 @@
+"""Utilities to develop this library. Intended for internal use only."""
+
 import dataclasses as dc
 from abc import ABC
 from types import UnionType
-from typing import Any, Union, get_args, get_origin
+from typing import Any, NotRequired, Union, get_args, get_origin
 
 import h5py
 import numpy as np
@@ -54,8 +56,7 @@ def _process_group(cls: type, items_name: str):
         cls.__setitem__ = setitem
         cls.__post_init__ = post_init
 
-    cls = dc.dataclass(cls)
-    return cls
+    return dc.dataclass(cls)
 
 
 def group(cls=None, /, *, items_name="_items"):
@@ -160,21 +161,30 @@ class Group(ABC):
 
                 ctyp = typ
                 if is_optional(typ):
-                    styps = get_args(typ)
-                    if len(styps) == 2:
-                        for styp in styps:
-                            if styp is type(None):
-                                continue
-                            ctyp = styp
+                    if get_origin(typ) is NotRequired:
+                        (base,) = get_args(typ)
+                        ctyp = base
                     else:
-                        raise NotImplementedError(f"unhandled annotation type {typ}")
+                        styps = get_args(typ)
+                        if len(styps) == 2:
+                            for styp in styps:
+                                if styp is type(None):
+                                    continue
+                                ctyp = styp
+                        else:
+                            raise NotImplementedError(
+                                f"unhandled annotation type {typ}"
+                            )
 
                 if isinstance(child, h5py.Group) and is_ndarray_annotation(ctyp):
                     raise TypeError(f"expected dataset for {cpath}, but found group")
                 if isinstance(child, h5py.Dataset) and not is_ndarray_annotation(ctyp):
                     raise TypeError(f"expected group for {cpath}, but found dataset")
 
-                items[key] = ctyp.from_group(child, cpath)
+                try:
+                    items[key] = ctyp.from_group(child, cpath)
+                except AttributeError as err:
+                    raise AttributeError(f"[{ctyp}] {err}")
 
         if attrs is not None and items is None:
             return cls(attrs)
@@ -185,12 +195,51 @@ class Group(ABC):
 
         raise ValueError(f"neither of attrs nor items present at {path}")
 
+    def to_h5(self, group: h5py.Group, path: str = ""):
+        attrs = getattr(self, "attrs", None)
+        items = getattr(self, _STORE, None)
+        if attrs is not None:
+            try:
+                attrs_dict_to_h5(group, attrs)
+            except Exception as err:
+                err.add_note(f"at group {path}")
+                raise
+        if items is not None:
+            for name, value in items.items():
+                gpath = name
+                if path != "":
+                    gpath = f"{path}/{gpath}"
+
+                if isinstance(value, np.ndarray):
+                    if is_numpy_string_dtype(value.dtype):
+                        value = value.astype(h5py.string_dtype())
+                    group.create_dataset(name, data=value)
+                elif isinstance(value, Group) or is_group(value):
+                    grp = group.create_group(name)
+                    value.to_h5(grp, gpath)
+                else:
+                    raise TypeError(f"unknown object at {gpath}: {type(value)}")
+
+
+def attrs_dict_to_h5(group: h5py.Group, attrs):
+    for name, value in attrs.items():
+        if isinstance(value, np.ndarray) and is_numpy_string_dtype(value.dtype):
+            value = value.astype(h5py.string_dtype())
+        try:
+            group.attrs[name] = value
+        except Exception as err:
+            err.add_note(f"occured while assigning attribue `{name}`")
+            raise
+
 
 def is_union(typ: type) -> bool:
     return get_origin(typ) in (Union, UnionType)
 
 
 def is_optional(typ: type) -> bool:
+    orig = get_origin(typ)
+    if orig is NotRequired:
+        return True
     if not is_union(typ):
         return False
 
@@ -205,3 +254,10 @@ def is_ndarray_annotation(annotation) -> bool:
     return get_origin(annotation) is np.ndarray or (
         isinstance(annotation, type) and issubclass(annotation, np.ndarray)
     )
+
+
+def is_numpy_string_dtype(dtype: np.dtype) -> bool:
+    if isinstance(dtype, np.dtypes.StringDType):
+        return True
+
+    return dtype.kind in {"U", "S"}

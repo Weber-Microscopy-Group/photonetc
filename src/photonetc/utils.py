@@ -1,5 +1,6 @@
-from photonetc import info
 import numpy as np
+
+from photonetc import info
 
 
 def info_camera_default() -> info.Camera:
@@ -7,7 +8,7 @@ def info_camera_default() -> info.Camera:
     xax1 = info.CameraAxis1(
         {
             "Coefs": np.zeros(2),
-            "Decimals": np.array([0]),
+            "Decimals": np.array([0], dtype=np.int32),
             "Name": np.array(["xpos"]),
             "Unit": np.array(["cm"]),
         }
@@ -16,7 +17,7 @@ def info_camera_default() -> info.Camera:
     xaxis = info.CameraAxis(
         attrs={
             "Coefs": np.zeros(1),
-            "Decimals": np.array([0]),
+            "Decimals": np.array([0], dtype=np.int32),
             "Name": np.array(["xpos"]),
             "Unit": np.array(["cm"]),
         },
@@ -27,7 +28,7 @@ def info_camera_default() -> info.Camera:
     yax1 = info.CameraAxis1(
         {
             "Coefs": np.zeros(1),
-            "Decimals": np.array([0]),
+            "Decimals": np.array([0], dtype=np.int32),
             "Name": np.array(["ypos"]),
             "Unit": np.array(["cm"]),
         }
@@ -36,7 +37,7 @@ def info_camera_default() -> info.Camera:
     yaxis = info.CameraAxis(
         attrs={
             "Coefs": np.zeros(1),
-            "Decimals": np.array([0]),
+            "Decimals": np.array([0], np.int32),
             "Name": np.array(["ypos"]),
             "Unit": np.array(["cm"]),
         },
@@ -50,32 +51,32 @@ def info_camera_default() -> info.Camera:
     camera_attrs = info.CameraAttrs(
         {
             "AveragingMode": np.array([info.CameraAveragingMode.NONE.value]),
-            "Binning": np.ones(2),
-            "BitDepth": np.array([16]),
-            "CaptorSize": np.array([2048, 2048]),
+            "Binning": np.ones(2, dtype=np.int32),
+            "BitDepth": np.array([16], dtype=np.int32),
+            "CaptorSize": np.array([2048, 2048], dtype=np.int32),
             "CoolerSetPoint": np.array(["-"]),
-            "DetectorMode": np.array([info.CameraDetectorMode.CONVENTIONAL.value]),
-            "GradientOrientation": np.array([0]),
+            "DetectorMode": np.array(
+                [info.CameraDetectorMode.CONVENTIONAL.value],
+            ),
+            "GradientOrientation": np.array([0], dtype=np.int32),
             "Model": np.array(["test_model"]),
             "Name": np.array(["test_name"]),
-            "Orientation": np.array([0]),
+            "Orientation": np.array([0], dtype=np.int32),
             "PixelSizeNm": np.array([1]),
             "ReadoutSpeed": np.array(["125"]),
-            "RoiSize": np.array([2048, 2048]),
-            "RoiStart": np.array([0, 0]),
+            "RoiSize": np.array([2048, 2048], dtype=np.int32),
+            "RoiStart": np.array([0, 0], dtype=np.int32),
             "Shutter": np.array([info.CameraShutter.AUTO_NONE.value]),
             "SN": np.array(["test_sn"]),
             "Temperature": np.array(["-10"]),
             "Trigger": np.array([info.CameraTrigger.NONE.value]),
-            "VerticalFlip": np.array([0]),
+            "VerticalFlip": np.array([0], dtype=np.int32),
         }
     )
-    c = info.Camera(
+    return info.Camera(
         attrs=camera_attrs,
         _items={"DynamicProperties": dprops, "XAxis": xaxis, "YAxis": yaxis},
     )
-
-    return c
 
 
 def info_grating_default() -> info.Grating:
@@ -124,24 +125,25 @@ def info_grating_default() -> info.Grating:
         },
     )
 
-    g1_attrs = info.GratingSlotEmptyAttrs(
-        {
-            "FWHM": np.array([1.0]),
-            "MaxWavelength": np.array([1000.0]),
-            "MinWavelength": np.array([500.0]),
-            "Name": np.array(["slot1"]),
-            "Type": np.array([info.GratingType.STATIC.value]),
-        }
+    g1 = info.GratingSlotEmpty(
+        info.GratingSlotEmptyAttrs(
+            {
+                "FWHM": np.array([1.0]),
+                "MaxWavelength": np.array([1000.0]),
+                "MinWavelength": np.array([500.0]),
+                "Name": np.array(["slot1"]),
+                "Type": np.array([info.GratingType.STATIC.value]),
+            }
+        )
     )
-    g1 = info.GratingSlotEmpty(attrs=g1_attrs)
 
-    emptys = [
+    empty = [
         info.GratingSlotEmpty(
-            attrs=info.GratingSlotEmptyAttrs(
+            info.GratingSlotEmptyAttrs(
                 {
-                    "FWHM": np.array([idx * 1.0]),
-                    "MaxWavelength": np.array([idx * 200.0]),
-                    "MinWavelength": np.array([idx * 100.0]),
+                    "FWHM": np.array([0]),
+                    "MaxWavelength": np.array([0]),
+                    "MinWavelength": np.array([0]),
                     "Name": np.array([f"slot{idx}"]),
                     "Type": np.array([info.GratingType.STATIC.value]),
                 }
@@ -150,60 +152,51 @@ def info_grating_default() -> info.Grating:
         for idx in range(2, 9)
     ]
 
-    g = info.Grating(
+    return info.Grating(
         {
             "0": g0,
             "1": g1,
-            "2": emptys[0],
-            "3": emptys[1],
-            "4": emptys[2],
-            "5": emptys[3],
-            "6": emptys[4],
-            "7": emptys[5],
-            "8": emptys[6],
+            "2": empty[0],
+            "3": empty[1],
+            "4": empty[2],
+            "5": empty[3],
+            "6": empty[4],
+            "7": empty[5],
+            "8": empty[6],
         }
     )
-
-    return g
 
 
 def info_optics_default() -> info.Optics:
     attrs = info.OpticsAttrs(
         {"FocusStatus": np.array([1]), "Objective": np.array(["o1"])}
     )
-    o = info.Optics(attrs=attrs)
-    return o
+    return info.Optics(attrs)
 
 
 def info_system_default() -> info.System:
-    attrs = info.SystemAttrs(
-        {
-            "SN": np.array(["test_sn"]),
-            "SoftwareVersion": np.array(["0.0.0"]),
-            "Type": np.array([info.SystemType.SYSTEM.value]),
-        }
+    return info.System(
+        info.SystemAttrs(
+            {
+                "SN": np.array(["test_sn"]),
+                "SoftwareVersion": np.array(["0.0.0"]),
+                "Type": np.array([info.SystemType.SYSTEM.value]),
+            }
+        )
     )
-    s = info.System(attrs=attrs)
-    return s
 
 
 def info_cube_default() -> info.Cube:
-    attrs = info.CubeAttrs(
-        {
-            "AcqMode": np.array([info.CubeAcqMode.HYPERSPECTRAL.value]),
-            "CreationDate": np.array(["2000/01/01 12:00:00"]),
-            "Name": np.array(["name"]),
-            "Type": np.array([info.CubeDatatype.I16.value]),
-            "BroadBand": None,
-            "FixedTimeExposure": None,
-            "LaserNm": None,
-            "LowerWavelength": None,
-            "UpperWavelength": None,
-            "WavelengthStep": None,
-        }
+    return info.Cube(
+        info.CubeAttrs(
+            {
+                "AcqMode": np.array([info.CubeAcqMode.HYPERSPECTRAL.value]),
+                "CreationDate": np.array(["2000/01/01 12:00:00"]),
+                "Name": np.array(["name"]),
+                "Type": np.array([info.CubeDatatype.I16.value]),
+            }
+        )
     )
-    c = info.Cube(attrs=attrs, _items={"ZAxis": None})
-    return c
 
 
 def info_misc_default() -> info.Misc:
@@ -211,15 +204,13 @@ def info_misc_default() -> info.Misc:
     # Notes
     + `Illumination` is `None`.
     """
-    zattrs = info.MiscZStageAttrs({"Position": np.array([0.0])})
-    zstage = info.MiscZStage(attrs=zattrs)
-    m = info.Misc(_items={"Illumination": None, "Z-Stage": zstage})
-    return m
+    zstage = info.MiscZStage(info.MiscZStageAttrs({"Position": np.array([0.0])}))
+    return info.Misc({"Z-Stage": zstage})
 
 
 def info_default() -> info.Info:
     return info.Info(
-        _items={
+        {
             "Camera": info_camera_default(),
             "Grating": info_grating_default(),
             "Optics": info_optics_default(),

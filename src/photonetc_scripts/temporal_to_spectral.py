@@ -6,12 +6,25 @@ the temporal cubes cover."""
 from __future__ import annotations
 
 import argparse
+import os
 from glob import glob
 
 import h5py
 import numpy as np
 
-from photonetc import SpectralCube, TemporalCube, spectralcube
+from photonetc import SpectralCube, TemporalCube, info
+
+
+def _temporal_wavelength(cube: TemporalCube) -> float:
+    x = cube["Wavelength"]
+    assert x is not None
+    return float(x[0])
+
+
+def _temporal_grating(cube: TemporalCube) -> int:
+    x = cube["GratingID"]
+    assert x is not None
+    return int(x[0])
 
 
 def validate_reference_settings(
@@ -34,10 +47,12 @@ def validate_reference_settings(
     Raises:
         ValueError: Reference cube has a duplicated setting.
     """
-    cube_gratings = [int(cube.grating_ids[0]) for cube in cubes]  # type: ignore
-    cube_wavelengths = [float(cube.wavelengths[0]) for cube in cubes]  # type: ignore
-    ref_gratings = reference.grating_ids[()]
-    ref_wavelengths = reference.wavelengths[()]
+    # SAFETY: `validate_wavelength` ensures wavelengths are all present and single valued
+    # SAFETY: `validate_gratings` ensures gratings are all present and single valued
+    cube_gratings = [_temporal_grating(cube) for cube in cubes]
+    cube_wavelengths = [_temporal_wavelength(cube) for cube in cubes]
+    ref_gratings = reference["GratingID"]
+    ref_wavelengths = reference["Wavelength"]
 
     invalid = []
     for grating, wavelength in zip(cube_gratings, cube_wavelengths):
@@ -80,8 +95,10 @@ def validate_cube_settings_duplication(
         it could be that wavelengths [1, 2, 3] are split into two groups.
         This occurs if 1 is keyed first. Then 2 will be included in the group, but 3 will not.
     """
-    gratings = [int(cube.grating_ids[0]) for cube in cubes]  # type: ignore
-    wavelengths = [float(cube.wavelengths[0]) for cube in cubes]  # type: ignore
+    # SAFETY: `validate_wavelength` ensures wavelengths are all present and single valued
+    # SAFETY: `validate_gratings` ensures gratings are all present and single valued
+    gratings = [_temporal_grating for cube in cubes]
+    wavelengths = [_temporal_wavelength for cube in cubes]
 
     settings = {}
     for idx in range(len(gratings)):
@@ -126,10 +143,12 @@ def validate_cube_settings(
     Raises:
         ValueError: Reference cube has a duplicated setting.
     """
-    cube_gratings = np.array([int(cube.grating_ids[0]) for cube in cubes])  # type: ignore
-    cube_wavelengths = np.array([float(cube.wavelengths[0]) for cube in cubes])  # type: ignore
-    ref_gratings = reference.grating_ids
-    ref_wavelengths = reference.wavelengths
+    # SAFETY: `validate_wavelength` ensures wavelengths are all present and single valued
+    # SAFETY: `validate_gratings` ensures gratings are all present and single valued
+    cube_gratings = np.array([_temporal_grating(cube) for cube in cubes])
+    cube_wavelengths = np.array([_temporal_wavelength(cube) for cube in cubes])
+    ref_gratings = reference["GratingID"]
+    ref_wavelengths = reference["Wavelength"]
 
     invalid = []
     for grating, wavelength in zip(ref_gratings, ref_wavelengths):
@@ -164,7 +183,7 @@ def validate_shapes(cubes: list[TemporalCube]) -> None | list[int]:
     for idx, cube in enumerate(cubes):
         grouped = False
         for group in shapes:
-            if cube.data.shape == cubes[group[0]].data.shape:
+            if cube["Images"].shape == cubes[group[0]]["Images"].shape:
                 group.append(idx)
                 grouped = True
                 break
@@ -230,7 +249,7 @@ def validate_wavelengths(cubes: list[TemporalCube]) -> None | list[int]:
     """
     invalid = []
     for idx, cube in enumerate(cubes):
-        wavelengths = cube.wavelengths
+        wavelengths = cube["Wavelength"]
         if wavelengths is None:
             invalid.append(idx)
             continue
@@ -257,7 +276,7 @@ def validate_gratings(cubes: list[TemporalCube]) -> None | list[int]:
     """
     invalid = []
     for idx, cube in enumerate(cubes):
-        gratings = cube.grating_ids
+        gratings = cube["GratingID"]
         if gratings is None:
             invalid.append(idx)
             continue
@@ -278,7 +297,7 @@ def temporal_to_spectral(
     temporal: list[TemporalCube],
     prefix: str,
     wavelength_threshold: float,
-) -> tuple[list[spectralcube.SpectralCube], np.ndarray]:
+) -> tuple[list[SpectralCube], np.ndarray]:
     """Convert a list of temporal cubes to a list of stpectral cubes.
 
     Args:
@@ -290,13 +309,14 @@ def temporal_to_spectral(
     Returns:
         tuple[list[spectralcube.SpectralCube], np.ndarray]: tuple of `(spectral cubes, times)`
     """
-    temporal.sort(key=lambda cube: cube.wavelengths[0])  # type: ignore
+    # SAFETY: `validate_wavelength` ensures wavelengths are all present and single valued
+    # SAFETY: `validate_gratings` ensures gratings are all present and single valued
+    temporal.sort(key=_temporal_wavelength)
+    wavelengths = np.array([_temporal_wavelength(cube) for cube in temporal])
+    gratings = np.array([_temporal_grating(cube) for cube in temporal])
+    times = np.cumulative_sum(temporal[0].elapsed)
 
-    wavelengths = np.array([cube.wavelengths[0] for cube in temporal])  # type: ignore
-    gratings = np.array([cube.grating_ids[0] for cube in temporal])  # type: ignore
-    times = np.cumulative_sum(temporal[0].exposure_times)
-
-    wavelengths_ref = reference.wavelengths
+    wavelengths_ref = reference["Wavelength"]
     translation_x_ref = reference["Translation_X"]
     translation_y_ref = reference["Translation_Y"]
 
@@ -307,43 +327,49 @@ def temporal_to_spectral(
     for udx, vdx in zip(w_udx, w_vdx):
         w_idx[udx] = [vdx]
 
-    translation_x = translation_x_ref[w_idx]  # type: ignore
-    translation_y = translation_y_ref[w_idx]  # type: ignore
+    translation_x = translation_x_ref[w_idx]
+    translation_y = translation_y_ref[w_idx]
 
-    data = [t.data for t in temporal]
+    data = [t["Images"] for t in temporal]
     hypercube = np.stack(data)
     hypercube = np.transpose(hypercube, (1, 0, 2, 3))
     spectral = [hypercube[idx] for idx in range(hypercube.shape[0])]
 
-    ref_data = temporal[0].to_abstract()
-    info_ref = ref_data.Info
+    info_ref = temporal[0]["Info"]
     cubes = []
     for idx, images in enumerate(spectral):
-        info_cube = spectralcube.Cube(
-            AcqMode=info_ref.Cube.AcqMode,
-            LowerWavelength=wavelengths[0],
-            UpperWavelength=wavelengths[-1],
-            Name=prefix + str(times[idx]),
-            Type=info_ref.Cube.Type,
+        info_cube = info.Cube(
+            {
+                "AcqMode": info_ref["Cube"].attrs["AcqMode"],
+                "CreationDate": info_ref["Cube"].attrs["CreationDate"],
+                "LowerWavelength": wavelengths[:1],
+                "UpperWavelength": wavelengths[-1:],
+                "Name": np.array([prefix + str(times[idx])]),
+                "Type": info_ref["Cube"].attrs["Type"],
+            }
         )
-        info_misc = spectralcube.Misc(ZStage=info_ref.Misc.ZStage)
-        info = spectralcube.Info(
-            Camera=info_ref.Camera,
-            Cube=info_cube,
-            Grating=info_ref.Grating,
-            Misc=info_misc,
-            Optics=info_ref.Optics,
-            System=info_ref.System,
+        info_misc = info.Misc({"Z-Stage": info_ref["Misc"]["Z-Stage"]})
+        cube_info = info.Info(
+            {
+                "Camera": info_ref["Camera"],
+                "Cube": info_cube,
+                "Grating": info_ref["Grating"],
+                "Misc": info_misc,
+                "Optics": info_ref["Optics"],
+                "System": info_ref["System"],
+            }
         )
 
-        cube = spectralcube.SpectralCube(
-            GratingId=gratings,
-            Images=images,
-            Info=info,
-            TimeExposure=times,
-            Translation_X=translation_x,  # type: ignore
-            Translation_Y=translation_y,  # type: ignore
-            Wavelength=wavelengths,
+        cube = SpectralCube(
+            {
+                "GratingID": gratings,
+                "Images": images,
+                "Info": cube_info,
+                "TimeExposure": times,
+                "Translation_X": translation_x,
+                "Translation_Y": translation_y,
+                "Wavelength": wavelengths,
+            }
         )
 
         cubes.append(cube)
@@ -351,30 +377,64 @@ def temporal_to_spectral(
     return (cubes, times)
 
 
-def save_cubes(cubes: list[spectralcube.SpectralCube], times: np.ndarray, prefix: str):
+def save_cubes(
+    cubes: list[SpectralCube],
+    times: np.ndarray,
+    outdir: str = ".",
+    prefix: str = "",
+    overwrite: bool = False,
+):
     """Save cubes to disk.
 
     Args:
         cubes (list[spectralcube.SpectralCube]): Cubes to save.
         times (np.ndarray): Times corresponding to each cube.
-        prefix (str): Name prefix.
+        outdir (str, optional): Output directory. Defaults to current directory.
+        prefix (str, optional): Name prefix. Defaults to "".
+        overwrite (bool, optional): Overwrite existing files. Defaults to False.
     """
+    mode = "x"
+    if overwrite:
+        mode = "w"
     for idx, cube in enumerate(cubes):
         time = f"{times[idx]:.2e}"
         time = time.replace("+", "")
         time = time.replace(".", "_")
-        name = f"{prefix}.{idx}.{time}s.h5"
-        f = cube.to_h5(name)
-        f.close()
+        name = f"{idx}.{time}s.h5"
+        if prefix != "":
+            name = f"{prefix}{name}"
+
+        path = os.path.join(outdir, name)
+        with h5py.File(path, mode=mode) as f:
+            cube.to_h5(f)
 
 
 def run(
     reference: str,
     input: list[str],
-    output: str,
     time_threshold: float,
     wavelength_threshold: float,
+    outdir: str = ".",
+    prefix: str = "",
+    overwrite: bool = False,
 ):
+    """Transform a spectral set of temporal cubes into a temporal set of spectral cubes.
+
+    Args:
+        reference (str): Path to the reference cube. This should be a spectral cube covering the same wavelengths as the temporal cubes.
+        input (list[str]): Paths to the temporal cubes.
+        output (str): Path of the directory in which to save the output spectral cubes.
+        time_threshold (float): Threshold at which to consider cubes to have been taken at the same time, in ms.
+        wavelength_threshold (float): Threshold at which to consider wavelngths to be the name. in nm.
+
+    Raises:
+        RuntimeError: Reference or data cubes could not be openend.
+        RuntimeError: Wavelengths are invalid.
+        RuntimeError: Gratings, timestamps, or data shapes are invalid.
+        RuntimeError: Duplicate cubes are found.
+        RuntimeError: Reference and data cubes do not match.
+        ValueError: Time or wavelength threshold are invalid.
+    """
     try:
         ref_cube = SpectralCube(reference)
     except ValueError as err:
@@ -382,11 +442,12 @@ def run(
 
     temporal = []
     for path in input:
-        try:
-            cube = TemporalCube(path)
-            temporal.append(cube)
-        except ValueError as err:
-            raise RuntimeError(f"[{path}] {err}")
+        with h5py.File(path) as f:
+            try:
+                cube = TemporalCube.from_file(f)
+                temporal.append(cube)
+            except ValueError as err:
+                raise RuntimeError(f"[{path}] {err}")
 
     invalid = validate_wavelengths(temporal)
     if invalid is not None:
@@ -396,7 +457,7 @@ def run(
     invalid = validate_gratings(temporal)
     if invalid is not None:
         invalid_paths = [input[idx] for idx in invalid]
-        raise RuntimeError(f"Invalid graing: {invalid_paths}")
+        raise RuntimeError(f"Invalid grating: {invalid_paths}")
 
     invalid = validate_timestamps(temporal, time_threshold)
     if invalid is not None:
@@ -436,9 +497,9 @@ def run(
         raise ValueError("Reference data 'Translation_X' is invalid")  # noqa: TRY004
 
     cubes, times = temporal_to_spectral(
-        ref_cube, temporal, output, wavelength_threshold
+        ref_cube, temporal, outdir, wavelength_threshold
     )
-    save_cubes(cubes, times, output)
+    save_cubes(cubes, times, outdir, prefix, overwrite)
 
 
 def main():
@@ -449,7 +510,19 @@ def main():
 
     parser.add_argument("reference", type=str, help="path to the reference cube")
     parser.add_argument("input", type=str, help="glob pattern to match input files")
-    parser.add_argument("output", type=str, help="prefix of output filenames.")
+    parser.add_argument(
+        "-o",
+        "--out",
+        type=str,
+        default=".",
+        help="output directory, relative or absoulte path",
+    )
+    parser.add_argument(
+        "-p", "--prefix", type=str, default="", help="prefix of output filenames."
+    )
+    parser.add_argument(
+        "--overwrite", action="store_true", help="overwrite existing files"
+    )
     parser.add_argument(
         "-t",
         "--time-threshold",
@@ -478,9 +551,11 @@ def main():
     run(
         args.reference,
         input,
-        args.output,
         args.time_threshold,
         args.wavelength_threshold,
+        args.outdir,
+        args.prefix,
+        args.overwrite,
     )
 
 

@@ -1,13 +1,13 @@
 """Cube info. i.e. Things inside cube["Cube"]["Info"]."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Annotated, Literal, TypeAlias, TypedDict
+from typing import Annotated, Literal, NotRequired, TypeAlias, TypedDict
 
 import h5py
 import numpy as np
 
-from .meta import Group, group
+from .meta import _STORE, Group, attrs_dict_to_h5, group
 
 NDArrayF64: TypeAlias = np.typing.NDArray[np.float64]
 NDArrayI32: TypeAlias = np.typing.NDArray[np.int32]
@@ -84,7 +84,7 @@ class CameraTrigger(StrEnum):
 
 class CameraAttrs(TypedDict):
     AveragingMode: Annotated[NDArrayStr, Literal[1]]
-    Binning: Annotated[NDArrayF64, Literal[2]]
+    Binning: Annotated[NDArrayI32, Literal[2]]
     BitDepth: Annotated[NDArrayI32, Literal[1]]
     CaptorSize: Annotated[NDArrayI32, Literal[2]]
     CoolerSetPoint: Annotated[NDArrayStr, Literal[1]]
@@ -133,6 +133,13 @@ class GratingSlotCalibrationAttrs(TypedDict):
 class GratingSlotCalibration(Group):
     attrs: GratingSlotCalibrationAttrs
 
+    def to_h5(self, group: h5py.Group, path: str = ""):
+        try:
+            attrs_dict_to_h5(group, self.attrs)
+        except Exception as err:
+            err.add_note(f"at group {path}")
+            raise
+
 
 class GratingSlotRegistrationAttrs(TypedDict):
     Scaling_X: Annotated[NDArrayF64, Literal[5]]
@@ -144,6 +151,13 @@ class GratingSlotRegistrationAttrs(TypedDict):
 @dataclass
 class GratingSlotRegistration(Group):
     attrs: GratingSlotRegistrationAttrs
+
+    def to_h5(self, group: h5py.Group, path: str = ""):
+        try:
+            attrs_dict_to_h5(group, self.attrs)
+        except Exception as err:
+            err.add_note(f"at group {path}")
+            raise
 
 
 class GratingType(StrEnum):
@@ -191,6 +205,33 @@ class GratingSlot:
 
         return cls(attrs, {"Calibration": calibration, "Registration": registration})
 
+    def to_h5(self, group: h5py.Group, path: str = ""):
+        try:
+            attrs_dict_to_h5(group, self.attrs)
+        except Exception as err:
+            err.add_note(f"at group {path}")
+            raise
+
+        name = "Calibration"
+        gpath = name
+        if path != "":
+            gpath = f"{path}/{gpath}"
+        grp = group.create_group(name)
+        self[name].to_h5(grp, gpath)  # type: ignore
+
+        name = "Registration"
+        gpath = name
+        if path != "":
+            gpath = f"{path}/{gpath}"
+        reggrp = group.create_group(name)
+        for name, value in self["Registration"].items():  # type: ignore
+            gpath = name
+            if path != "":
+                gpath = f"{path}/Registration/{gpath}"
+
+            grp = reggrp.create_group(name)
+            value.to_h5(grp, gpath)
+
 
 class GratingSlotEmptyAttrs(TypedDict):
     FWHM: Annotated[NDArrayF64, Literal[1]]
@@ -203,6 +244,13 @@ class GratingSlotEmptyAttrs(TypedDict):
 @dataclass
 class GratingSlotEmpty(Group):
     attrs: GratingSlotEmptyAttrs
+
+    def to_h5(self, group: h5py.Group, path: str = ""):
+        try:
+            attrs_dict_to_h5(group, self.attrs)
+        except Exception as err:
+            err.add_note(f"at group {path}")
+            raise
 
 
 GratingItems = TypedDict(
@@ -228,16 +276,26 @@ class Grating:
     @classmethod
     def from_group(cls: type, group: h5py.Group, path: str = ""):
         slots = {}
-        for key, slot in group.items():
-            spath = path + f"/{key}"
-            if "Calibration" in slot and "Registration" in slot:
-                slots[key] = GratingSlot.from_group(slot, spath)
-            elif "Calibration" not in slot and "Registration" not in slot:
-                slots[key] = GratingSlotEmpty.from_group(slot, spath)
+        for name, value in group.items():
+            spath = path + f"/{name}"
+            if "Calibration" in value and "Registration" in value:
+                slots[name] = GratingSlot.from_group(value, spath)
+            elif "Calibration" not in value and "Registration" not in value:
+                slots[name] = GratingSlotEmpty.from_group(value, spath)
             else:
                 raise ValueError(f"unknown grating slot state at {spath}")
 
         return cls(slots)
+
+    def to_h5(self, group: h5py.Group, path: str = ""):
+        items = getattr(self, _STORE)
+        for name, value in items.items():
+            gpath = name
+            if path != "":
+                gpath = f"{path}/{gpath}"
+
+            grp = group.create_group(name)
+            value.to_h5(grp, gpath)
 
 
 class OpticsAttrs(TypedDict):
@@ -293,7 +351,7 @@ class MiscIllumination(Group):
 MiscItems = TypedDict(
     "MiscItems",
     {
-        "Illumination": MiscIllumination | None,
+        "Illumination": NotRequired[MiscIllumination],
         "Z-Stage": MiscZStage,
     },
 )
@@ -318,7 +376,7 @@ class CubeZAxis(Group):
 
 
 class CubeItems(TypedDict):
-    ZAxis: CubeZAxis | None
+    ZAxis: NotRequired[CubeZAxis]
 
 
 class CubeAcqMode(StrEnum):
@@ -335,18 +393,18 @@ class CubeAttrs(TypedDict):
     CreationDate: Annotated[NDArrayStr, Literal[1]]
     Name: Annotated[NDArrayStr, Literal[1]]
     Type: Annotated[NDArrayStr, Literal[1]]
-    BroadBand: Annotated[NDArrayI32, Literal[1]] | None
-    FixedTimeExposure: Annotated[NDArrayI32, Literal[1]] | None
-    LaserNm: Annotated[NDArrayF64, Literal[1]] | None
-    LowerWavelength: Annotated[NDArrayF64, Literal[1]] | None
-    UpperWavelength: Annotated[NDArrayF64, Literal[1]] | None
-    WavelengthStep: Annotated[NDArrayF64, Literal[1]] | None
+    BroadBand: NotRequired[Annotated[NDArrayI32, Literal[1]]]
+    FixedTimeExposure: NotRequired[Annotated[NDArrayI32, Literal[1]]]
+    LaserNm: NotRequired[Annotated[NDArrayF64, Literal[1]]]
+    LowerWavelength: NotRequired[Annotated[NDArrayF64, Literal[1]]]
+    UpperWavelength: NotRequired[Annotated[NDArrayF64, Literal[1]]]
+    WavelengthStep: NotRequired[Annotated[NDArrayF64, Literal[1]]]
 
 
 @group
 class Cube(Group):
     attrs: CubeAttrs
-    _items: CubeItems
+    _items: CubeItems = field(default_factory=CubeItems)
 
 
 class InfoItems(TypedDict):

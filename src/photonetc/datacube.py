@@ -2,7 +2,6 @@
 
 from abc import ABC
 from enum import Enum
-from types import UnionType
 from typing import Any, TypeAlias, TypedDict
 
 import h5py
@@ -28,10 +27,27 @@ class Datacube(ABC):
     _items: Any
 
     def __post_init__(self):
+        if self._items["Images"].ndim != 3:
+            raise ValueError("Images must have 3 dimensions")
+        if self._items["TimeExposure"].ndim != 1:
+            raise ValueError("TimeExposure must have 1 dimension")
+
+        invalid = []
         i_frames = self._items["Images"].shape[0]
         t_frames = self._items["TimeExposure"].shape[0]
         if i_frames != t_frames:
-            raise ValueError("Image and TimeExposure shapes are incompatible")
+            raise ValueError("Images and TimeExposure shapes are incompatible")
+
+        if len(invalid) > 0:
+            names = ", ".join(invalid)
+            raise ValueError(f"{names} and Image shapes are incompatible")
+
+        expected_px = (
+            self._items["Info"]["Camera"].attrs["RoiSize"]
+            / self._items["Info"]["Camera"].attrs["Binning"]
+        )
+        if (self._items["Images"].shape[1:] != expected_px).any():
+            raise ValueError("Image shape does not match Info/Camera.RoiSize")
 
     @classmethod
     def from_file(cls: type, f: h5py.File) -> "Datacube":
@@ -74,7 +90,6 @@ class Datacube(ABC):
 
                 path = ROOT_NAME + f"/{key}"
                 values[key] = typ.from_group(val, path)
-
             elif isinstance(val, h5py.Dataset):
                 if is_required and not meta.is_ndarray_annotation(typ):
                     raise TypeError(f"expected dataset at {key}, found {typ}")
@@ -86,17 +101,31 @@ class Datacube(ABC):
 
         return cls(values)
 
+    def to_h5(self, f: h5py.File):
+        root = f.create_group(ROOT_NAME)
+        items = getattr(self, meta._STORE)
+        for name, value in items.items():
+            if isinstance(value, np.ndarray):
+                if meta.is_numpy_string_dtype(value.dtype):
+                    value = value.astype(h5py.string_dtype())
+                root.create_dataset(name, data=value)
+            elif isinstance(value, meta.Group):
+                grp = root.create_group(name)
+                value.to_h5(grp)
+            else:
+                raise TypeError(f"unknown object at {name}")
+
     @property
     def elapsed(self) -> NDArrayF64:
         """
         Returns:
-            np.ndarray: Elapsed time of each frame.
+            np.ndarray: Elapsed time at the beginning each frame.
         """
         return np.cumsum(self["TimeExposure"])  # type: ignore
 
 
 class SpectralCubeItems(DatacubeItems):
-    GratingID: NDArrayI32
+    GratingID: NDArrayStr
     Translation_X: NDArrayF64
     Translation_Y: NDArrayF64
     Wavelength: NDArrayF64
@@ -108,6 +137,32 @@ class SpectralCube(Datacube):
 
     def __post_init__(self):
         super().__post_init__()
+
+        if (
+            self._items["Info"]["Cube"].attrs["AcqMode"][0]
+            != info.CubeAcqMode.HYPERSPECTRAL
+        ):
+            raise ValueError(
+                f"Info/Cube.AcqMode must be {info.CubeAcqMode.HYPERSPECTRAL} for SpectralCubes"
+            )
+
+        g_dims = self._items["GratingID"].ndim
+        x_dims = self._items["Translation_X"].ndim
+        y_dims = self._items["Translation_Y"].ndim
+        w_dims = self._items["Wavelength"].ndim
+
+        invalid = []
+        if g_dims != 1:
+            invalid.append("GratingID")
+        if x_dims != 1:
+            invalid.append("Translation_X")
+        if y_dims != 1:
+            invalid.append("Translation_Y")
+        if w_dims != 1:
+            invalid.append("Wavelength")
+        if len(invalid) > 0:
+            names = ", ".join(invalid)
+            raise ValueError(f"{names} must have 1 dimension")
 
         i_frames = self._items["Images"].shape[0]
         g_frames = self._items["GratingID"].shape[0]
@@ -124,7 +179,6 @@ class SpectralCube(Datacube):
             invalid.append("Translation_Y")
         if w_frames != i_frames:
             invalid.append("Wavelength")
-
         if len(invalid) > 0:
             names = ", ".join(invalid)
             raise ValueError(f"{names} and Image shapes are incompatible")
@@ -137,7 +191,7 @@ class Bandtype(Enum):
 
 class TemporalCubeItems(DatacubeItems):
     Angle: NDArrayF64
-    GratingID: NDArrayI32 | None
+    GratingID: NDArrayStr | None
     Timestamp: NDArrayStr
     Wavelength: NDArrayF64 | None
 
@@ -149,14 +203,40 @@ class TemporalCube(Datacube):
     def __post_init__(self):
         super().__post_init__()
 
+        if self._items["Info"]["Cube"].attrs["AcqMode"][0] != info.CubeAcqMode.VIDEO:
+            raise ValueError(
+                f"Info/Cube.AcqMode must be {info.CubeAcqMode.VIDEO} for TemporalCubes"
+            )
         if (
             self._items["GratingID"] is None and self._items["Wavelength"] is not None
         ) or (
             self._items["GratingID"] is not None and self._items["Wavelength"] is None
         ):
             raise ValueError(
-                "`GratingID` and `Wavelength` must either both be present or both be absent"
+                "GratingID and Wavelength must either both be present or both be absent"
             )
+
+        a_dims = self._items["Angle"].ndim
+        t_dims = self._items["Timestamp"].ndim
+        g_dims = None
+        w_dims = None
+        if self._items["GratingID"] is not None:
+            g_dims = self._items["GratingID"].ndim
+        if self._items["Wavelength"] is not None:
+            w_dims = self._items["Wavelength"].ndim
+
+        invalid = []
+        if a_dims != 1:
+            invalid.append("Angle")
+        if t_dims != 1:
+            invalid.append("Timestamp")
+        if g_dims is not None and g_dims != 1:
+            invalid.append("GratingID")
+        if w_dims is not None and w_dims != 1:
+            invalid.append("Wavelength")
+        if len(invalid) > 0:
+            names = ", ".join(invalid)
+            raise ValueError(f"{names} must have 1 dimension")
 
         i_frames = self._items["Images"].shape[0]
         a_frames = self._items["Angle"].shape[0]
@@ -190,7 +270,3 @@ class TemporalCube(Datacube):
             return Bandtype.Bandpass
 
         raise ValueError("invalid band type state")
-
-
-def load_spectral_cube(file: h5py.File):
-    root = file[ROOT_NAME]

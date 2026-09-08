@@ -28,9 +28,10 @@ class Datacube(ABC):
     def __getitem__(self, key: Literal["TimeExposure"]) -> NDArrayF64: ...
     @classmethod
     def from_file(cls, f: h5py.File) -> Datacube: ...
+    def to_h5(self, f: h5py.File): ...
 
 class SpectralCubeItems(DatacubeItems):
-    GratingID: NDArrayI32
+    GratingID: NDArrayStr
     Translation_X: NDArrayF64
     Translation_Y: NDArrayF64
     Wavelength: NDArrayF64
@@ -60,7 +61,7 @@ class Bandtype(Enum):
 
 class TemporalCubeItems(DatacubeItems):
     Angle: NDArrayF64
-    GratingID: NDArrayI32 | None
+    GratingID: NDArrayStr | None
     Timestamp: NDArrayStr
     Wavelength: NDArrayF64 | None
 
@@ -75,7 +76,7 @@ class TemporalCube(Datacube):
     @overload
     def __getitem__(self, key: Literal["Angle"]) -> NDArrayF64: ...
     @overload
-    def __getitem__(self, key: Literal["GratingID"]) -> NDArrayI32 | None: ...
+    def __getitem__(self, key: Literal["GratingID"]) -> NDArrayStr | None: ...
     @overload
     def __getitem__(self, key: Literal["Timestamp"]) -> NDArrayStr: ...
     @overload

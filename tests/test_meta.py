@@ -1,14 +1,11 @@
 """Tests for the `meta` module."""
 
-import pathlib
 import dataclasses as dc
-import h5py
-import photonetc as pe
-import numpy as np
 from typing import TypedDict
 
-DATA_PATH_SPECTRALCUBE = pathlib.Path(__file__).parent.parent / "data/spectralcube.h5"
-DATA_PATH_TEMPORALCUBE = pathlib.Path(__file__).parent.parent / "data/temporalcube.h5"
+import numpy as np
+
+import photonetc as pe
 
 
 def test_group():
@@ -38,7 +35,7 @@ def test_group():
         attrs: ParentAttrs
         _items: ParentItems
 
-    c = Child(attrs={"strval": "child", "intval": 0})
+    c = Child({"strval": "child", "intval": 0})
     p = Parent(attrs={"strval": "parent", "boolval": True}, _items={"child": c})  # type: ignore
 
     assert p.attrs["strval"] == "parent"
@@ -52,18 +49,22 @@ def test_group_typing():
     + Attributes should be autocompleted.
     + Should not create linting errors.
     """
-    ax0 = pe.info.CameraAxis0({"Name": "x"})
+    ax0 = pe.info.CameraAxis0({"Name": np.array(["x"])})
     ax1 = pe.info.CameraAxis1(
-        {"Coefs": np.zeros(1), "Decimals": np.zeros(1), "Name": "y", "Unit": "cm"}
+        {
+            "Coefs": np.zeros(1),
+            "Decimals": np.zeros(1, dtype=np.int32),
+            "Name": np.array(["y"]),
+            "Unit": np.array(["cm"]),
+        }
     )
 
-    axis_items = pe.info.CameraAxisItems({"0": ax0, "1": ax1})
     axis = pe.info.CameraAxis(
         attrs={
             "Coefs": np.zeros(1),
-            "Decimals": np.zeros(1),
-            "Name": "y",
-            "Unit": "cm",
+            "Decimals": np.zeros(1, dtype=np.int32),
+            "Name": np.array(["y"]),
+            "Unit": np.array(["cm"]),
         },
         _items={"0": ax0, "1": ax1},
     )

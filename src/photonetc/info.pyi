@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Annotated, Literal, TypeAlias, TypedDict, overload
+from typing import Annotated, Literal, NotRequired, TypeAlias, TypedDict, overload
 
 import numpy as np
 
@@ -68,7 +68,7 @@ class CameraTrigger(StrEnum):
 
 class CameraAttrs(TypedDict):
     AveragingMode: Annotated[NDArrayStr, Literal[1]]
-    Binning: Annotated[NDArrayF64, Literal[2]]
+    Binning: Annotated[NDArrayI32, Literal[2]]
     BitDepth: Annotated[NDArrayI32, Literal[1]]
     CaptorSize: Annotated[NDArrayI32, Literal[2]]
     CoolerSetPoint: Annotated[NDArrayStr, Literal[1]]
@@ -249,7 +249,7 @@ class MiscIllumination:
 MiscItems = TypedDict(
     "MiscItems",
     {
-        "Illumination": MiscIllumination | None,
+        "Illumination": NotRequired[MiscIllumination],
         "Z-Stage": MiscZStage,
     },
 )
@@ -272,7 +272,7 @@ class CubeZAxis:
     attrs: CubeZAxisAttrs
 
 class CubeItems(TypedDict):
-    ZAxis: CubeZAxis | None
+    ZAxis: NotRequired[CubeZAxis]
 
 class CubeAcqMode(StrEnum):
     HYPERSPECTRAL = "Hyperspectral Acquisition"
@@ -286,18 +286,19 @@ class CubeAttrs(TypedDict):
     CreationDate: Annotated[NDArrayStr, Literal[1]]
     Name: Annotated[NDArrayStr, Literal[1]]
     Type: Annotated[NDArrayStr, Literal[1]]
-    BroadBand: Annotated[NDArrayI32, Literal[1]] | None
-    FixedTimeExposure: Annotated[NDArrayI32, Literal[1]] | None
-    LaserNm: Annotated[NDArrayF64, Literal[1]] | None
-    LowerWavelength: Annotated[NDArrayF64, Literal[1]] | None
-    UpperWavelength: Annotated[NDArrayF64, Literal[1]] | None
-    WavelengthStep: Annotated[NDArrayF64, Literal[1]] | None
+    BroadBand: NotRequired[Annotated[NDArrayI32, Literal[1]]]
+    FixedTimeExposure: NotRequired[Annotated[NDArrayI32, Literal[1]]]
+    LaserNm: NotRequired[Annotated[NDArrayF64, Literal[1]]]
+    LowerWavelength: NotRequired[Annotated[NDArrayF64, Literal[1]]]
+    UpperWavelength: NotRequired[Annotated[NDArrayF64, Literal[1]]]
+    WavelengthStep: NotRequired[Annotated[NDArrayF64, Literal[1]]]
 
 class Cube:
     attrs: CubeAttrs
 
-    def __init__(self, attrs: CubeAttrs, _items: CubeItems): ...
+    def __init__(self, attrs: CubeAttrs, _items: CubeItems = {}): ...
     def __getitem__(self, key: Literal["ZAxis"]) -> CubeZAxis: ...
+    def __setitem__(self, key: Literal["ZAxis"], value: CubeZAxis | None): ...
 
 class InfoItems(TypedDict):
     Camera: Camera
