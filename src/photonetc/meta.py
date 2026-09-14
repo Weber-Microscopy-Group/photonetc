@@ -3,7 +3,17 @@
 import dataclasses as dc
 from abc import ABC
 from types import UnionType
-from typing import Any, NotRequired, Union, get_args, get_origin
+from typing import (
+    Any,
+    NotRequired,
+    Union,
+    get_args,
+    get_origin,
+    Annotated,
+    Literal,
+    TypedDict,
+)
+import numbers
 
 import h5py
 import numpy as np
@@ -219,6 +229,105 @@ class Group(ABC):
                     value.to_h5(grp, gpath)
                 else:
                     raise TypeError(f"unknown object at {gpath}: {type(value)}")
+
+    def set_attr(self, name: str, value: Any):
+        """Set an attribute, coercing the value into the field's value.
+
+        Args:
+            name (str): Attribute name.
+            value (Any): Value.
+
+        Raises:
+            AttributeError: Attribute with name does not exist.
+            ValueError: Value is incompatible with expected type.
+        """
+        typ = self.__annotations__["attrs"]
+        base = typ.__annotations__[name]
+        if get_origin(base) is not Annotated:
+            raise TypeError(f"field {name} is not annotated")
+
+        try:
+            (arr, shape) = get_args(base)
+        except ValueError:
+            raise TypeError(
+                f"field {name} annotation is invalid, expected two arguments"
+            )
+        if not is_ndarray_annotation(arr):
+            raise TypeError(f"field {name} is not a numpy array")
+        if get_origin(shape) is not Literal:
+            raise TypeError(f"field {name} is missing a shape annotation")
+        shape = get_args(shape)
+
+        try:
+            (_, dtype) = get_args(arr)
+        except ValueError:
+            raise TypeError(
+                f"field {name} annotation is invalid, numpy array is missing data type"
+            )
+        (dtype,) = get_args(dtype)
+
+        attrs: dict = self.attrs  # type: ignore
+        if isinstance(value, np.ndarray):
+            if len(value.shape) != len(shape):
+                raise ValueError(
+                    f"incorrect number of dimensions, expected {shape} found {value.shape}"
+                )
+            for expected, actual in zip(shape, value.shape):
+                if expected != actual:
+                    raise ValueError(
+                        f"incorrect shape, expected {shape} found {value.shape}"
+                    )
+
+            try:
+                attrs[name] = value.astype(dtype)  # pyright: ignore[reportIndexIssue]
+            except ValueError as err:
+                err.add_note(f"field {name}")
+                raise
+        elif isinstance(value, list):
+            if len(shape) != 1:
+                raise ValueError(
+                    "can not use lists for complex attributes, use a numpy array instead"
+                )
+            if len(value) != shape[0]:
+                raise ValueError(
+                    f"incorrect shape, expected {shape} found {(len(value),)}"
+                )
+
+            try:
+                val = np.array(value, dtype=dtype)
+            except ValueError as err:
+                err.add_note(f"field {name}")
+                raise
+
+            attrs[name] = val  # pyright: ignore[reportIndexIssue]
+        elif isinstance(value, numbers.Number):
+            if len(shape) != 1 or shape[0] != 1:
+                raise ValueError(f"expected array-like with shape {shape}")
+            if not np.isdtype(dtype, "numeric"):
+                raise ValueError(f"expected {dtype} type")
+
+            try:
+                val = np.array([value], dtype=dtype)
+            except ValueError as err:
+                err.add_note(f"field {name}")
+                raise
+
+            attrs[name] = val  # pyright: ignore[reportIndexIssue]
+        elif isinstance(value, str):
+            if len(shape) != 1 or shape[0] != 1:
+                raise ValueError(f"expected array-like with shape {shape}")
+            if dtype is not np.str_:
+                raise ValueError(f"expected {dtype} type")
+
+            try:
+                val = np.array([value], dtype=dtype)
+            except ValueError as err:
+                err.add_note(f"field {name}")
+                raise
+
+            attrs[name] = val  # pyright: ignore[reportIndexIssue]
+        else:
+            raise TypeError(f"unhandled type {type(value)}")
 
 
 def attrs_dict_to_h5(group: h5py.Group, attrs):

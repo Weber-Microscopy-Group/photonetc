@@ -1,11 +1,37 @@
 """Tests for the `meta` module."""
 
 import dataclasses as dc
-from typing import TypedDict
+from typing import Annotated, Literal, TypedDict
 
 import numpy as np
 
 import photonetc as pe
+
+
+def test_group_set_attr():
+    class Attrs(TypedDict):
+        a_float: Annotated[pe.info.NDArrayF64, Literal[1]]
+        a_int: Annotated[pe.info.NDArrayI32, Literal[1]]
+        a_str: Annotated[pe.info.NDArrayStr, Literal[1]]
+
+    @dc.dataclass
+    class Grp(pe.meta.Group):
+        attrs: Attrs
+
+    g = Grp(
+        {
+            "a_float": np.array([0]),
+            "a_int": np.array([0], dtype=np.int32),
+            "a_str": np.array(["a"]),
+        }
+    )
+
+    g.set_attr("a_float", 1)
+    g.set_attr("a_int", 1)
+    g.set_attr("a_str", "b")
+    assert (g.attrs["a_float"] == np.array([1])).all()
+    assert (g.attrs["a_int"] == np.array([1], dtype=np.int32)).all()
+    assert (g.attrs["a_str"] == np.array(["b"])).all()
 
 
 def test_group():
