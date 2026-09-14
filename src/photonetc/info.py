@@ -2,12 +2,12 @@
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Annotated, Literal, NotRequired, TypeAlias, TypedDict
+from typing import Annotated, Any, Literal, NotRequired, TypeAlias, TypedDict
 
 import h5py
 import numpy as np
 
-from .meta import _STORE, Group, attrs_dict_to_h5, group
+from .meta import _STORE, Group, _set_attr, attrs_dict_to_h5, group
 
 NDArrayF64: TypeAlias = np.typing.NDArray[np.float64]
 NDArrayI32: TypeAlias = np.typing.NDArray[np.int32]
@@ -231,6 +231,20 @@ class GratingSlot:
 
             grp = reggrp.create_group(name)
             value.to_h5(grp, gpath)
+
+    def set_attr(self, name: str, value: Any):
+        """Set an attribute, coercing the value into the field's value.
+
+        Args:
+            obj: Object to set attribute on.
+            name (str): Attribute name.
+            value (Any): Value.
+
+        Raises:
+            AttributeError: Attribute with name does not exist.
+            ValueError: Value is incompatible with expected type.
+        """
+        _set_attr(self, name, value)
 
 
 class GratingSlotEmptyAttrs(TypedDict):

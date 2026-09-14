@@ -12,9 +12,9 @@ DATA_PATH_TEMPORALCUBE_BROADBAND = TEST_DIR.joinpath("data/temporalcube-broadban
 DATA_PATH_TEMPORALCUBE_BANDPASS = TEST_DIR.joinpath("data/temporalcube-bandpass.h5")
 
 
-def test_temporalcube_bandpass_from_file():
+def test_temporalcube_bandpass_from_h5():
     f = h5py.File(DATA_PATH_TEMPORALCUBE_BANDPASS)
-    c = pe.datacube.TemporalCube.from_file(f)
+    c = pe.datacube.TemporalCube.from_h5(f)
 
     FRAMES = 21
     assert c["Angle"].shape[0] == FRAMES
@@ -25,6 +25,10 @@ def test_temporalcube_bandpass_from_file():
     assert c.band_type is pe.datacube.Bandtype.Bandpass
     assert c["GratingID"] is not None
     assert c["GratingID"].shape[0] == FRAMES  # pyright: ignore[reportOptionalMemberAccess]
+    assert (
+        # a legacy bug saved gratings as strings, which should be converted
+        c["GratingID"].dtype == np.int32  # pyright: ignore[reportOptionalMemberAccess]
+    )
     assert c["Wavelength"] is not None
     assert c["Wavelength"].shape[0] == FRAMES  # pyright: ignore[reportOptionalMemberAccess]
 
@@ -53,9 +57,9 @@ def test_temporalcube_bandpass_from_file():
     assert c["Info"]["Cube"].attrs["WavelengthStep"] is None
 
 
-def test_temporalcube_broadband_from_file():
+def test_temporalcube_broadband_from_h5():
     f = h5py.File(DATA_PATH_TEMPORALCUBE_BROADBAND)
-    c = pe.datacube.TemporalCube.from_file(f)
+    c = pe.datacube.TemporalCube.from_h5(f)
 
     FRAMES = 18
     assert c["Angle"].shape[0] == FRAMES
@@ -96,9 +100,9 @@ def test_temporalcube_broadband_from_file():
     assert c["Info"]["Cube"].attrs["WavelengthStep"] is None
 
 
-def test_spectralcube_from_file():
+def test_spectralcube_from_h5():
     f = h5py.File(DATA_PATH_SPECTRALCUBE)
-    c = pe.datacube.SpectralCube.from_file(f)
+    c = pe.datacube.SpectralCube.from_h5(f)
 
     FRAMES = 88
     assert c["Images"].shape[0] == FRAMES
@@ -130,14 +134,14 @@ def test_spectralcube():
             "Images": np.zeros((1, *info["Camera"].attrs["RoiSize"])),
             "TimeExposure": np.zeros(1),
             "Info": info,
-            "GratingID": np.array(["0"]),
+            "GratingID": np.array([0], dtype=np.int32),
             "Translation_X": np.zeros(1),
             "Translation_Y": np.zeros(1),
             "Wavelength": np.zeros(1),
         }
     )
 
-    assert c["GratingID"][0] == "0"
+    assert c["GratingID"][0] == 0
     assert c["Images"][0, 0, 0] == 0
     assert c["Info"]["System"].attrs["SoftwareVersion"] == "0.0.0"
     assert c["TimeExposure"][0] == 0
@@ -153,7 +157,7 @@ def test_datacube_invalid_shape():
                 "Images": np.zeros((1, 1, 1)),
                 "TimeExposure": np.zeros(2),
                 "Info": pe.utils.info_default(),
-                "GratingID": np.array(["0"]),
+                "GratingID": np.array([0], dtype=np.int32),
                 "Translation_X": np.zeros(1),
                 "Translation_Y": np.zeros(1),
                 "Wavelength": np.zeros(1),
@@ -171,7 +175,7 @@ def test_spectralcube_invalid_shape():
                 "Images": np.zeros((1, *info["Camera"].attrs["RoiSize"])),
                 "TimeExposure": np.zeros(1),
                 "Info": info,
-                "GratingID": np.array(["0", "0"]),
+                "GratingID": np.zeros(2, dtype=np.int32),
                 "Translation_X": np.zeros(2),
                 "Translation_Y": np.zeros(2),
                 "Wavelength": np.zeros(2),
@@ -193,14 +197,14 @@ def test_temporalcube():
             "TimeExposure": np.zeros(1),
             "Info": info,
             "Angle": np.zeros(1),
-            "GratingID": np.array(["0"]),
+            "GratingID": np.array([0], dtype=np.int32),
             "Timestamp": np.array(["2000/01/01 00:00:00.000"]),
             "Wavelength": np.zeros(1),
         }
     )
 
     assert c["GratingID"] is not None
-    assert c["GratingID"][0] == "0"  # type: ignore
+    assert c["GratingID"][0] == 0  # pyright: ignore[reportOptionalSubscript]
     assert c["Images"][0, 0, 0] == 0
     assert c["Info"]["System"].attrs["SoftwareVersion"] == "0.0.0"
     assert c["TimeExposure"][0] == 0
@@ -219,7 +223,7 @@ def test_temporalcube_invalid_shape():
                 "TimeExposure": np.zeros(1),
                 "Info": info,
                 "Angle": np.zeros(2),
-                "GratingID": np.array(["0", "0"]),
+                "GratingID": np.zeros(2, dtype=np.int32),
                 "Timestamp": np.array(
                     ["2000/01/01 00:00:00.000", "2000/01/02 00:00:00.000"]
                 ),
@@ -243,7 +247,7 @@ def test_temporalcube_invalid_acqmode():
                 "TimeExposure": np.zeros(1),
                 "Info": info,
                 "Angle": np.zeros(1),
-                "GratingID": np.array(["0"]),
+                "GratingID": np.array([0], dtype=np.int32),
                 "Timestamp": np.array(["2000/01/01 00:00:00.000"]),
                 "Wavelength": np.zeros(1),
             }
@@ -261,7 +265,7 @@ def test_spectralcube_invalid_acqmode():
                 "Images": np.zeros((1, *info["Camera"].attrs["RoiSize"])),
                 "TimeExposure": np.zeros(1),
                 "Info": info,
-                "GratingID": np.array(["0"]),
+                "GratingID": np.array([0], dtype=np.int32),
                 "Translation_X": np.zeros(1),
                 "Translation_Y": np.zeros(1),
                 "Wavelength": np.zeros(1),

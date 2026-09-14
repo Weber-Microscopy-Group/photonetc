@@ -13,6 +13,8 @@ def test_group_set_attr():
         a_float: Annotated[pe.info.NDArrayF64, Literal[1]]
         a_int: Annotated[pe.info.NDArrayI32, Literal[1]]
         a_str: Annotated[pe.info.NDArrayStr, Literal[1]]
+        a_list_int: Annotated[pe.info.NDArrayI32, Literal[3]]
+        a_list_str: Annotated[pe.info.NDArrayStr, Literal[3]]
 
     @dc.dataclass
     class Grp(pe.meta.Group):
@@ -23,15 +25,21 @@ def test_group_set_attr():
             "a_float": np.array([0]),
             "a_int": np.array([0], dtype=np.int32),
             "a_str": np.array(["a"]),
+            "a_list_int": np.array([0, 0, 0], dtype=np.int32),
+            "a_list_str": np.array(["a", "a", "a"]),
         }
     )
 
     g.set_attr("a_float", 1)
     g.set_attr("a_int", 1)
     g.set_attr("a_str", "b")
+    g.set_attr("a_list_int", [1, 1, 1])
+    g.set_attr("a_list_str", ["b", "b", "b"])
     assert (g.attrs["a_float"] == np.array([1])).all()
     assert (g.attrs["a_int"] == np.array([1], dtype=np.int32)).all()
     assert (g.attrs["a_str"] == np.array(["b"])).all()
+    assert (g.attrs["a_list_int"] == np.array([1, 1, 1])).all()
+    assert (g.attrs["a_list_str"] == np.array(["b", "b", "b"])).all()
 
 
 def test_group():

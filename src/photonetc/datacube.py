@@ -50,7 +50,7 @@ class Datacube(ABC):
             raise ValueError("Image shape does not match Info/Camera.RoiSize")
 
     @classmethod
-    def from_file(cls: type, f: h5py.File) -> "Datacube":
+    def from_h5(cls: type, f: h5py.File) -> "Datacube":
         root = f[ROOT_NAME]
         if not isinstance(root, h5py.Group):
             raise TypeError(f"{ROOT_NAME} has invalid type, expect h5py.Group")
@@ -125,7 +125,7 @@ class Datacube(ABC):
 
 
 class SpectralCubeItems(DatacubeItems):
-    GratingID: NDArrayStr
+    GratingID: NDArrayI32
     Translation_X: NDArrayF64
     Translation_Y: NDArrayF64
     Wavelength: NDArrayF64
@@ -191,7 +191,7 @@ class Bandtype(Enum):
 
 class TemporalCubeItems(DatacubeItems):
     Angle: NDArrayF64
-    GratingID: NDArrayStr | None
+    GratingID: NDArrayI32 | None
     Timestamp: NDArrayStr
     Wavelength: NDArrayF64 | None
 
@@ -262,11 +262,22 @@ class TemporalCube(Datacube):
             names = ", ".join(invalid)
             raise ValueError(f"{names} and Image shapes are incompatible")
 
+    @classmethod
+    def from_h5(cls: type, f: h5py.File) -> "TemporalCube":
+        cube = super().from_h5(f)  # pyright: ignore[reportAttributeAccessIssue]
+
+        # old versions of the PHySpec spec software save grating ids as strings
+        # which is a bug, they are canonically i32s.
+        if cube["GratingID"] is not None and cube["GratingID"].dtype != np.int32:
+            cube["GratingID"] = cube["GratingID"].astype(np.int32)
+
+        return cube
+
     @property
     def band_type(self) -> Bandtype:
-        if self["GratingID"] is None and self["Wavelength"] is None:  # type: ignore
+        if self["GratingID"] is None and self["Wavelength"] is None:  # pyright: ignore[reportIndexIssue]
             return Bandtype.Broadband
-        if self["GratingID"] is not None and self["Wavelength"] is not None:  # type: ignore
+        if self["GratingID"] is not None and self["Wavelength"] is not None:  # pyright: ignore[reportIndexIssue]
             return Bandtype.Bandpass
 
         raise ValueError("invalid band type state")

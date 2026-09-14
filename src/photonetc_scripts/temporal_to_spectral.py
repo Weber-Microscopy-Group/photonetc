@@ -322,11 +322,12 @@ def temporal_to_spectral(
 
     wavelength_diff = wavelengths.reshape(-1, 1) - wavelengths_ref
     wavelength_diff = np.abs(wavelength_diff)
-    w_udx, w_vdx = np.asarray(wavelength_diff <= wavelength_threshold).nonzero()
+    w_udx, w_vdx = (wavelength_diff <= wavelength_threshold).nonzero()
     w_idx = np.empty_like(wavelengths)
     for udx, vdx in zip(w_udx, w_vdx):
-        w_idx[udx] = [vdx]
+        w_idx[udx] = vdx
 
+    w_idx = w_idx.astype(int).tolist()
     translation_x = translation_x_ref[w_idx]
     translation_y = translation_y_ref[w_idx]
 
@@ -340,11 +341,11 @@ def temporal_to_spectral(
     for idx, images in enumerate(spectral):
         info_cube = info.Cube(
             {
-                "AcqMode": info_ref["Cube"].attrs["AcqMode"],
+                "AcqMode": np.array([info.CubeAcqMode.HYPERSPECTRAL.value]),
                 "CreationDate": info_ref["Cube"].attrs["CreationDate"],
                 "LowerWavelength": wavelengths[:1],
                 "UpperWavelength": wavelengths[-1:],
-                "Name": np.array([prefix + str(times[idx])]),
+                "Name": np.array([f"{prefix}{times[idx]}s"]),
                 "Type": info_ref["Cube"].attrs["Type"],
             }
         )
@@ -396,14 +397,10 @@ def save_cubes(
     mode = "x"
     if overwrite:
         mode = "w"
+    padding = int(np.log10(len(cubes)))
     for idx, cube in enumerate(cubes):
-        time = f"{times[idx]:.2e}"
-        time = time.replace("+", "")
-        time = time.replace(".", "_")
-        name = f"{idx}.{time}s.h5"
-        if prefix != "":
-            name = f"{prefix}{name}"
-
+        time = f"{times[idx]:.2e}".replace("+", "").replace(".", "_")
+        name = f"{idx:0{padding}}.{prefix}{time}s.h5"
         path = os.path.join(outdir, name)
         with h5py.File(path, mode=mode) as f:
             cube.to_h5(f)
@@ -435,16 +432,17 @@ def run(
         RuntimeError: Reference and data cubes do not match.
         ValueError: Time or wavelength threshold are invalid.
     """
-    try:
-        ref_cube = SpectralCube(reference)
-    except ValueError as err:
-        raise RuntimeError(f"Could not open reference cube: {err}")
+    with h5py.File(reference) as f:
+        try:
+            ref_cube = SpectralCube.from_h5(f)
+        except ValueError as err:
+            raise RuntimeError(f"Could not open reference cube: {err}")
 
     temporal = []
     for path in input:
         with h5py.File(path) as f:
             try:
-                cube = TemporalCube.from_file(f)
+                cube = TemporalCube.from_h5(f)
                 temporal.append(cube)
             except ValueError as err:
                 raise RuntimeError(f"[{path}] {err}")
@@ -497,7 +495,7 @@ def run(
         raise ValueError("Reference data 'Translation_X' is invalid")  # noqa: TRY004
 
     cubes, times = temporal_to_spectral(
-        ref_cube, temporal, outdir, wavelength_threshold
+        ref_cube, temporal, prefix, wavelength_threshold
     )
     save_cubes(cubes, times, outdir, prefix, overwrite)
 
