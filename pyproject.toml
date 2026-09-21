@@ -27,6 +27,7 @@ dependencies = ["h5py", "numpy", "plotly", "imageio", "scipy"]
 optional-dependencies = { "test" = ["pytest"] }
 
 [project.scripts]
+photonetc-extract-frame_settings = "photonetc_scripts.extract_frame_settings:main"
 photonetc-convert-temporal-to-spectral = "photonetc_scripts.temporal_to_spectral:main"
 
 [project.urls]
